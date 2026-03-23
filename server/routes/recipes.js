@@ -31,9 +31,9 @@ router.get('/:id', async (req, res) => {
 
 router.post('/suggest', auth, async (req, res) => {
   try {
-    const { intent, availableIngredients, maxTime } = req.body;
-    const suggestions = await suggestRecipes({ userId: req.user.id, intent, availableIngredients, maxTime });
-    res.json(suggestions);
+    const { intent, availableIngredients, maxTime, difficulty, mainIngredient } = req.body;
+    const result = await suggestRecipes({ userId: req.user.id, intent, availableIngredients, maxTime, difficulty, mainIngredient });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

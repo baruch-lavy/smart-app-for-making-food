@@ -2,7 +2,7 @@ const User = require('../models/User');
 const Recipe = require('../models/Recipe');
 const MealHistory = require('../models/MealHistory');
 
-async function suggestRecipes({ userId, intent, availableIngredients, maxTime }) {
+async function suggestRecipes({ userId, intent, availableIngredients, maxTime, difficulty, mainIngredient, childrenMode }) {
   const user = await User.findById(userId);
   const { tastePreferences = [], dislikes = [], dietaryRestrictions = [] } = user || {};
 
@@ -21,10 +21,26 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
     });
   }
 
-  if (intent === 'quick') {
-    recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
-  } else if (intent === 'easy') {
-    recipes = recipes.filter(r => r.difficulty === 'easy');
+  // support new intent object: { time: 'short'|'medium'|'long', difficulty: 'easy'|'medium'|'hard' }
+  if (typeof intent === 'string') {
+    if (intent === 'quick') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    if (intent === 'easy') recipes = recipes.filter(r => r.difficulty === 'easy');
+  } else if (intent && typeof intent === 'object') {
+    if (intent.time === 'short') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    else if (intent.time === 'medium') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 45);
+    else if (intent.time === 'long') {
+      // no time filter for long
+    }
+    if (intent.difficulty) recipes = recipes.filter(r => r.difficulty === intent.difficulty);
+  }
+
+  // also apply explicit difficulty parameter if provided from client
+  if (difficulty) recipes = recipes.filter(r => r.difficulty === difficulty);
+
+  // If childrenMode is requested, prefer easy recipes and optionally filter out hard ones
+  if (childrenMode) {
+    // prefer easy: keep all but apply later boost; optionally remove 'hard' recipes
+    recipes = recipes.filter(r => r.difficulty !== 'hard');
   }
 
   if (maxTime) {
@@ -54,6 +70,25 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
       score += matchCount * 10;
     }
 
+    // boost recipes that include the requested main ingredient
+    if (mainIngredient) {
+      const mi = mainIngredient.toLowerCase();
+      if (ingredients.some(ing => ing.includes(mi) || mi.includes(ing))) {
+        score += 40; // large boost to prioritize mains with this ingredient
+      } else {
+        score -= 5; // slight penalty if missing
+      }
+    }
+
+    // boost kid-friendly recipes when childrenMode is on
+    if (childrenMode) {
+      // tags that indicate suitability for kids
+      const kidTags = ['kid-friendly', 'family', 'kids', 'child-friendly', 'children'];
+      if (tags.some(t => kidTags.includes(t.toLowerCase()))) score += 30;
+      // also prefer easy difficulty
+      if (recipe.difficulty === 'easy') score += 20;
+    }
+
     const restrictedMap = {
       'Vegetarian': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb'],
       'Vegan': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb', 'cheese', 'milk', 'butter', 'egg', 'cream', 'honey'],
@@ -72,7 +107,23 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
   });
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 3).map(s => s.recipe);
+  const topMains = scored.slice(0, 3).map(s => s.recipe);
+
+  // find a side suggestion: prefer a different recipe with same cuisine and short time
+  let side = null;
+  if (topMains.length > 0) {
+    const mainCuisine = topMains[0].cuisine;
+    // candidates: recipes not in top mains, same cuisine, total time <= 30
+    const mainIds = new Set(topMains.map(r => r._id.toString()));
+    const sideCandidates = (await Recipe.find({ cuisine: mainCuisine })).filter(r => !mainIds.has(r._id.toString()) && (r.cookingTime + r.prepTime) <= 30);
+    if (sideCandidates.length > 0) {
+      // pick the one with shortest total time
+      sideCandidates.sort((a, b) => (a.cookingTime + a.prepTime) - (b.cookingTime + b.prepTime));
+      side = sideCandidates[0];
+    }
+  }
+
+  return { mains: topMains, side };
 }
 
 module.exports = { suggestRecipes };
