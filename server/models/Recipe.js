@@ -43,6 +43,7 @@ const recipeSchema = new mongoose.Schema({
   title: String,
   description: String,
   cuisine: String,
+  imageUrl: String,
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
   cookingTime: Number,
   prepTime: Number,
@@ -64,6 +65,14 @@ const recipeSchema = new mongoose.Schema({
     calories: Number,
     protein: Number,
     carbs: Number,
+    fat: Number
+  },
+  source: {
+    title: String,
+    url: String,
+    siteName: String,
+  }
+});
     fat: Number,
     fiber: Number,
     sugar: Number,

@@ -3,6 +3,9 @@ const Recipe = require('../models/Recipe');
 const MealHistory = require('../models/MealHistory');
 const Pantry = require('../models/Pantry');
 
+const MAX_MAIN_RESULTS = 6;
+
+async function suggestRecipes({ userId, intent, availableIngredients, maxTime, difficulty, mainIngredient, childrenMode }) {
 // Substitution map: key = ingredient that may be missing, value = list of possible substitutes
 const SUBSTITUTIONS = {
   'egg': ['flax egg', 'chia egg', 'applesauce', 'banana'],
@@ -235,6 +238,27 @@ async function suggestRecipes({
     });
   }
 
+  // support new intent object: { time: 'short'|'medium'|'long', difficulty: 'easy'|'medium'|'hard' }
+  if (typeof intent === 'string') {
+    if (intent === 'quick') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    if (intent === 'easy') recipes = recipes.filter(r => r.difficulty === 'easy');
+  } else if (intent && typeof intent === 'object') {
+    if (intent.time === 'short') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    else if (intent.time === 'medium') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 45);
+    else if (intent.time === 'long') {
+      // no time filter for long
+    }
+    if (intent.difficulty) recipes = recipes.filter(r => r.difficulty === intent.difficulty);
+  }
+
+  // also apply explicit difficulty parameter if provided from client
+  if (difficulty) recipes = recipes.filter(r => r.difficulty === difficulty);
+
+  // If childrenMode is requested, prefer easy recipes and optionally filter out hard ones
+  if (childrenMode) {
+    // prefer easy: keep all but apply later boost; optionally remove 'hard' recipes
+    recipes = recipes.filter(r => r.difficulty !== 'hard');
+  }
   if (intent === 'quick') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
   else if (intent === 'easy') recipes = recipes.filter(r => r.difficulty === 'easy');
 
@@ -291,6 +315,37 @@ async function suggestRecipes({
       score += matchCount * 8;
     }
 
+    // boost recipes that include the requested main ingredient
+    if (mainIngredient) {
+      const mi = mainIngredient.toLowerCase();
+      if (ingredients.some(ing => ing.includes(mi) || mi.includes(ing))) {
+        score += 40; // large boost to prioritize mains with this ingredient
+      } else {
+        score -= 5; // slight penalty if missing
+      }
+    }
+
+    // boost kid-friendly recipes when childrenMode is on
+    if (childrenMode) {
+      // tags that indicate suitability for kids
+      const kidTags = ['kid-friendly', 'family', 'kids', 'child-friendly', 'children'];
+      if (tags.some(t => kidTags.includes(t.toLowerCase()))) score += 30;
+      // also prefer easy difficulty
+      if (recipe.difficulty === 'easy') score += 20;
+    }
+
+    const restrictedMap = {
+      'Vegetarian': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb'],
+      'Vegan': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb', 'cheese', 'milk', 'butter', 'egg', 'cream', 'honey'],
+      'Gluten-Free': ['flour', 'bread', 'pasta', 'wheat', 'soy sauce', 'barley'],
+      'Dairy-Free': ['cheese', 'milk', 'butter', 'cream', 'yogurt'],
+      'Nut-Free': ['almond', 'walnut', 'peanut', 'cashew', 'pecan', 'nut'],
+    };
+    for (const restriction of dietaryRestrictions) {
+      const restricted = restrictedMap[restriction] || [];
+      if (restricted.some(r => ingredients.some(ing => ing.includes(r)))) {
+        score -= 10;
+      }
     // Pantry expiry-aware bonus: boost recipes that use soon-to-expire items
     const expiringItems = pantryItems
       .filter(p => p.expiresAt && p.expiresAt >= now && p.expiresAt <= threeDaysFromNow)
@@ -322,6 +377,23 @@ async function suggestRecipes({
   });
 
   scored.sort((a, b) => b.score - a.score);
+  const topMains = scored.slice(0, MAX_MAIN_RESULTS).map(s => s.recipe);
+
+  // find a side suggestion: prefer a different recipe with same cuisine and short time
+  let side = null;
+  if (topMains.length > 0) {
+    const mainCuisine = topMains[0].cuisine;
+    // candidates: recipes not in top mains, same cuisine, total time <= 30
+    const mainIds = new Set(topMains.map(r => r._id.toString()));
+    const sideCandidates = (await Recipe.find({ cuisine: mainCuisine })).filter(r => !mainIds.has(r._id.toString()) && (r.cookingTime + r.prepTime) <= 30);
+    if (sideCandidates.length > 0) {
+      // pick the one with shortest total time
+      sideCandidates.sort((a, b) => (a.cookingTime + a.prepTime) - (b.cookingTime + b.prepTime));
+      side = sideCandidates[0];
+    }
+  }
+
+  return { mains: topMains, side };
 
   return scored.slice(0, 5).map(s => ({
     ...s.recipe.toObject(),

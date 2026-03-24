@@ -7,8 +7,10 @@ const useAppStore = create((set) => ({
   selectedRecipe: null,
   cookingStep: 0,
   cookingMode: false,
+  childrenMode: false,
   setView: (view) => set({ currentView: view }),
   setIntent: (intent) => set({ selectedIntent: intent }),
+  setChildrenMode: (val) => set({ childrenMode: val }),
   toggleIngredient: (ingredient) => set(state => ({
     selectedIngredients: state.selectedIngredients.includes(ingredient)
       ? state.selectedIngredients.filter(i => i !== ingredient)

@@ -11,6 +11,7 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/recipes', require('./routes/recipes'));
+app.use('/api/illustrations', require('./routes/illustrations'));
 app.use('/api/pantry', require('./routes/pantry'));
 app.use('/api/mealhistory', require('./routes/mealHistory'));
 app.use('/api/shopping', require('./routes/shopping'));

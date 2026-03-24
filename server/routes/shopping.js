@@ -6,6 +6,17 @@ const Recipe = require('../models/Recipe');
 const Pantry = require('../models/Pantry');
 const { getMissingAndSubstitutions } = require('../services/decisionEngine');
 
+function sanitizeItem(item) {
+  if (!item || !String(item.name || '').trim()) return null;
+  return {
+    name: String(item.name).trim(),
+    quantity: String(item.quantity || item.amount || '').trim(),
+    unit: String(item.unit || '').trim(),
+    checked: Boolean(item.checked),
+    recipeSource: String(item.recipeSource || '').trim(),
+  };
+}
+
 router.get('/', auth, async (req, res) => {
   try {
     let list = await ShoppingList.findOne({ userId: req.user.id });
@@ -87,7 +98,29 @@ router.post('/add', auth, async (req, res) => {
   try {
     let list = await ShoppingList.findOne({ userId: req.user.id });
     if (!list) list = new ShoppingList({ userId: req.user.id, items: [] });
-    list.items.push(req.body);
+    const item = sanitizeItem(req.body);
+    if (!item) return res.status(400).json({ message: 'Invalid shopping item' });
+    list.items.push(item);
+    await list.save();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/bulk-add', auth, async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items)
+      ? req.body.items.map(sanitizeItem).filter(Boolean)
+      : [];
+
+    if (items.length === 0) {
+      return res.status(400).json({ message: 'No valid shopping items provided' });
+    }
+
+    let list = await ShoppingList.findOne({ userId: req.user.id });
+    if (!list) list = new ShoppingList({ userId: req.user.id, items: [] });
+    list.items.push(...items);
     await list.save();
     res.json(list);
   } catch (err) {

@@ -122,9 +122,20 @@ Copy `server/.env.example` to `server/.env`:
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/smart-cooking
 JWT_SECRET=supersecretkey123
+GEMINI_API_KEY=your_google_ai_api_key
+GEMINI_MODEL=gemini-2.0-flash
+TAVILY_API_KEY=optional_for_web_search
+SERPAPI_API_KEY=optional_alternative_search_provider
+AI_SEARCH_PROVIDER=auto
+AI_IMAGE_MODEL=flux
+AI_IMAGE_PROVIDER=pollinations
 ```
 
 > **Note:** MongoDB must be running locally. Install from https://www.mongodb.com/try/download/community
+>
+> The AI recipe flow uses Gemini for structured recipe generation, a search provider for finding internet recipe sources, and AI-generated images. If no search or Gemini key is configured, the app falls back to the local recipe database.
+>
+> `AI_SEARCH_PROVIDER` accepts `auto`, `tavily`, or `serpapi`. In `auto`, Tavily is preferred when both providers are configured.
 
 ---
 
