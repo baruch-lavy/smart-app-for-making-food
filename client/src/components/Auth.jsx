@@ -15,7 +15,8 @@ export default function Auth() {
     mutationFn: (data) => api.post('/auth/login', data).then(r => r.data),
     onSuccess: (data) => {
       login(data.user, data.token)
-      navigate(data.user.onboardingComplete ? '/dashboard' : '/onboarding')
+      // always navigate to mode selection; onboarding flow remains available
+      navigate('/mode')
     }
   })
 

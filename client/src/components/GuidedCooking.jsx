@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight, Lightbulb, HelpCircle, Star, X } from 'lucide-react'
 import api from '../services/api'
@@ -8,6 +10,7 @@ import useAppStore from '../store/useAppStore'
 
 export default function GuidedCooking() {
   const { id } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const cookingStep = useAppStore(s => s.cookingStep)
@@ -21,6 +24,8 @@ export default function GuidedCooking() {
   const [feedback, setFeedback] = useState('')
   const [notes, setNotes] = useState('')
   const [historyId, setHistoryId] = useState(null)
+  const isGenerated = location.pathname.includes('/cook/generated/')
+  const routeRecipe = location.state?.recipe
 
   // Timer state
   const [timerOpen, setTimerOpen] = useState(false)
@@ -32,6 +37,11 @@ export default function GuidedCooking() {
   const touchStartX = useRef(null)
 
   const { data: recipe, isLoading } = useQuery({ queryKey: ['recipe', id], queryFn: () => api.get(`/recipes/${id}`).then(r => r.data) })
+  const { data: recipe, isLoading } = useQuery({
+    queryKey: ['cook-recipe', isGenerated ? `generated:${id}` : id],
+    queryFn: () => api.get(isGenerated ? `/recipes/generated/${id}` : `/recipes/${id}`).then(r => r.data),
+    initialData: routeRecipe,
+  })
 
   const logMutation = useMutation({
     mutationFn: (data) => api.post('/mealhistory', data).then(r => r.data),
@@ -67,13 +77,14 @@ export default function GuidedCooking() {
   if (!recipe) return null
 
   const steps = recipe.steps || []
-  const totalSteps = steps.length
+  const totalSteps = Math.max(steps.length, 1)
   const currentStepData = steps[cookingStep]
   const progress = ((cookingStep + 1) / totalSteps) * 100
+  const recipeDetailPath = recipe?.isGenerated ? `/recipe/generated/${id}` : `/recipe/${id}`
 
   const handleNext = () => {
     if (cookingStep === totalSteps - 1) {
-      logMutation.mutate({ recipeId: recipe._id, recipeTitle: recipe.title })
+      logMutation.mutate(recipe.isGenerated ? { recipeTitle: recipe.title } : { recipeId: recipe._id, recipeTitle: recipe.title })
       setShowDone(true)
     } else {
       nextStep()
@@ -117,7 +128,7 @@ export default function GuidedCooking() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="px-4 py-3 flex items-center gap-3 border-b border-gray-800">
-        <button onClick={() => { stopCooking(); navigate(`/recipe/${id}`) }} className="p-2 text-gray-400 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={() => { stopCooking(); navigate(recipeDetailPath, { state: { recipe } }) }} className="p-2 text-gray-400 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
         <div className="flex-1">
           <h1 className="font-bold truncate">{recipe.title}</h1>
           <p className="text-xs text-gray-400">Step {cookingStep + 1} of {totalSteps}</p>

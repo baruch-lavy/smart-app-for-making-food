@@ -35,7 +35,7 @@ export default function Onboarding() {
 
   const mutation = useMutation({
     mutationFn: (data) => api.put('/users/profile', data).then(r => r.data),
-    onSuccess: (data) => { updateUser(data); navigate('/dashboard') }
+    onSuccess: (data) => { updateUser(data); navigate('/mode') }
   })
 
   const toggle = (arr, setArr, val) =>

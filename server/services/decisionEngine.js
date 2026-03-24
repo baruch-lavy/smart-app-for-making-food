@@ -3,6 +3,9 @@ const Recipe = require('../models/Recipe');
 const MealHistory = require('../models/MealHistory');
 const Pantry = require('../models/Pantry');
 
+const MAX_MAIN_RESULTS = 6;
+
+async function suggestRecipes({ userId, intent, availableIngredients, maxTime, difficulty, mainIngredient, childrenMode }) {
 // Substitution map: key = ingredient that may be missing, value = list of possible substitutes
 const SUBSTITUTIONS = {
   'egg': ['flax egg', 'chia egg', 'applesauce', 'banana'],
@@ -61,7 +64,103 @@ function getMissingAndSubstitutions(recipe, pantryItems) {
   return { missing, substitutions };
 }
 
-async function suggestRecipes({ userId, intent, availableIngredients, maxTime }) {
+const calculateTimeBasedScore = (currentHour, recipe) => {
+  const totalTimeInMinutes = (recipe.cookingTime || 0) + (recipe.prepTime || 0);
+  
+  if (currentHour >= 7 && currentHour <= 9) {
+    return totalTimeInMinutes <= 15 ? 15 : totalTimeInMinutes <= 30 ? 10 : 0;
+  }
+  
+  if (currentHour >= 12 && currentHour <= 14) {
+    return totalTimeInMinutes <= 30 ? 12 : totalTimeInMinutes <= 45 ? 8 : 0;
+  }
+  
+  if (currentHour >= 18 && currentHour <= 21) {
+    return totalTimeInMinutes <= 60 ? 10 : 5;
+  }
+  
+  return 0;
+};
+
+const calculateEnergyLevelMatch = (userEnergyLevel, recipeEnergyRequired) => {
+  const energyMatchMap = {
+    low: { low: 20, medium: 5, high: -10 },
+    medium: { low: 10, medium: 15, high: 8 },
+    high: { low: 5, medium: 10, high: 18 }
+  };
+  
+  return energyMatchMap[userEnergyLevel]?.[recipeEnergyRequired] || 0;
+};
+
+const getWeatherScore = (recipe) => {
+  const currentMonth = new Date().getMonth();
+  const isWinter = currentMonth >= 11 || currentMonth <= 2;
+  const isSummer = currentMonth >= 5 && currentMonth <= 8;
+  
+  const weatherTags = recipe.weather || [];
+  
+  if (isWinter && weatherTags.includes('cold')) return 10;
+  if (isSummer && weatherTags.includes('hot')) return 10;
+  
+  return 0;
+};
+
+const calculateLeftoverOptimization = (pantry, recipe) => {
+  const pantryItemsExpiringSoon = pantry?.items?.filter(item => {
+    if (!item.expiresAt) return false;
+    const daysUntilExpiry = Math.floor((new Date(item.expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry <= 3 && daysUntilExpiry > 0;
+  }) || [];
+  
+  const recipeIngredients = recipe.ingredients.map(i => i.name.toLowerCase());
+  const expiringIngredients = pantryItemsExpiringSoon.map(p => p.name.toLowerCase());
+  
+  const matchCount = recipeIngredients.filter(ri => 
+    expiringIngredients.some(ei => ri.includes(ei) || ei.includes(ri))
+  ).length;
+  
+  return matchCount * 15;
+};
+
+const calculateNutritionBalance = (recentMeals, recipe) => {
+  if (!recentMeals || recentMeals.length === 0) return 0;
+  
+  const recentCalories = recentMeals.map(m => m.nutritionInfo?.calories || 0);
+  const avgRecentCalories = recentCalories.reduce((a, b) => a + b, 0) / recentCalories.length;
+  
+  const recipeCalories = recipe.nutritionInfo?.calories || 0;
+  
+  if (avgRecentCalories > 600 && recipeCalories < 500) return 12;
+  if (avgRecentCalories < 400 && recipeCalories > 500) return 10;
+  
+  return 5;
+};
+
+const calculateCuisineRotation = (recentHistory, recipe) => {
+  const recentCuisines = recentHistory.slice(0, 5).map(h => h.recipeCuisine);
+  const cuisineCounts = {};
+  
+  recentCuisines.forEach(cuisine => {
+    cuisineCounts[cuisine] = (cuisineCounts[cuisine] || 0) + 1;
+  });
+  
+  const currentCuisine = recipe.cuisine;
+  const cuisineCount = cuisineCounts[currentCuisine] || 0;
+  
+  if (cuisineCount === 0) return 15;
+  if (cuisineCount === 1) return 8;
+  if (cuisineCount >= 3) return -12;
+  
+  return 0;
+};
+
+async function suggestRecipes({ 
+  userId, 
+  intent, 
+  availableIngredients, 
+  maxTime,
+  currentContext = {} 
+}) {
   const user = await User.findById(userId);
   const {
     tastePreferences = [],
@@ -103,6 +202,10 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
   const now = new Date();
   const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
+  const pantry = await Pantry.findOne({ userId });
+  
+  const analytics = await Analytics.findOne({ userId });
+
   let recipes = await Recipe.find({});
 
   // Hard dietary exclusion — remove recipes entirely if they contain restricted ingredients
@@ -135,10 +238,39 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
     });
   }
 
+  // support new intent object: { time: 'short'|'medium'|'long', difficulty: 'easy'|'medium'|'hard' }
+  if (typeof intent === 'string') {
+    if (intent === 'quick') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    if (intent === 'easy') recipes = recipes.filter(r => r.difficulty === 'easy');
+  } else if (intent && typeof intent === 'object') {
+    if (intent.time === 'short') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
+    else if (intent.time === 'medium') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 45);
+    else if (intent.time === 'long') {
+      // no time filter for long
+    }
+    if (intent.difficulty) recipes = recipes.filter(r => r.difficulty === intent.difficulty);
+  }
+
+  // also apply explicit difficulty parameter if provided from client
+  if (difficulty) recipes = recipes.filter(r => r.difficulty === difficulty);
+
+  // If childrenMode is requested, prefer easy recipes and optionally filter out hard ones
+  if (childrenMode) {
+    // prefer easy: keep all but apply later boost; optionally remove 'hard' recipes
+    recipes = recipes.filter(r => r.difficulty !== 'hard');
+  }
   if (intent === 'quick') recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= 25);
   else if (intent === 'easy') recipes = recipes.filter(r => r.difficulty === 'easy');
 
   if (maxTime) recipes = recipes.filter(r => (r.cookingTime + r.prepTime) <= parseInt(maxTime));
+
+  const userEnergyLevel = preferences.energyLevel || currentContext.energyLevel || 'medium';
+  
+  if (userEnergyLevel === 'low') {
+    recipes = recipes.filter(r => r.energyLevelRequired === 'low' || r.energyLevelRequired === 'medium');
+  }
+
+  const currentHour = new Date().getHours();
 
   const scored = recipes.map(recipe => {
     let score = 0;
@@ -183,6 +315,37 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
       score += matchCount * 8;
     }
 
+    // boost recipes that include the requested main ingredient
+    if (mainIngredient) {
+      const mi = mainIngredient.toLowerCase();
+      if (ingredients.some(ing => ing.includes(mi) || mi.includes(ing))) {
+        score += 40; // large boost to prioritize mains with this ingredient
+      } else {
+        score -= 5; // slight penalty if missing
+      }
+    }
+
+    // boost kid-friendly recipes when childrenMode is on
+    if (childrenMode) {
+      // tags that indicate suitability for kids
+      const kidTags = ['kid-friendly', 'family', 'kids', 'child-friendly', 'children'];
+      if (tags.some(t => kidTags.includes(t.toLowerCase()))) score += 30;
+      // also prefer easy difficulty
+      if (recipe.difficulty === 'easy') score += 20;
+    }
+
+    const restrictedMap = {
+      'Vegetarian': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb'],
+      'Vegan': ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'meat', 'bacon', 'lamb', 'cheese', 'milk', 'butter', 'egg', 'cream', 'honey'],
+      'Gluten-Free': ['flour', 'bread', 'pasta', 'wheat', 'soy sauce', 'barley'],
+      'Dairy-Free': ['cheese', 'milk', 'butter', 'cream', 'yogurt'],
+      'Nut-Free': ['almond', 'walnut', 'peanut', 'cashew', 'pecan', 'nut'],
+    };
+    for (const restriction of dietaryRestrictions) {
+      const restricted = restrictedMap[restriction] || [];
+      if (restricted.some(r => ingredients.some(ing => ing.includes(r)))) {
+        score -= 10;
+      }
     // Pantry expiry-aware bonus: boost recipes that use soon-to-expire items
     const expiringItems = pantryItems
       .filter(p => p.expiresAt && p.expiresAt >= now && p.expiresAt <= threeDaysFromNow)
@@ -214,6 +377,23 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime })
   });
 
   scored.sort((a, b) => b.score - a.score);
+  const topMains = scored.slice(0, MAX_MAIN_RESULTS).map(s => s.recipe);
+
+  // find a side suggestion: prefer a different recipe with same cuisine and short time
+  let side = null;
+  if (topMains.length > 0) {
+    const mainCuisine = topMains[0].cuisine;
+    // candidates: recipes not in top mains, same cuisine, total time <= 30
+    const mainIds = new Set(topMains.map(r => r._id.toString()));
+    const sideCandidates = (await Recipe.find({ cuisine: mainCuisine })).filter(r => !mainIds.has(r._id.toString()) && (r.cookingTime + r.prepTime) <= 30);
+    if (sideCandidates.length > 0) {
+      // pick the one with shortest total time
+      sideCandidates.sort((a, b) => (a.cookingTime + a.prepTime) - (b.cookingTime + b.prepTime));
+      side = sideCandidates[0];
+    }
+  }
+
+  return { mains: topMains, side };
 
   return scored.slice(0, 5).map(s => ({
     ...s.recipe.toObject(),
