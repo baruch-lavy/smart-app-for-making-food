@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const User = require('../models/User');
+const Recipe = require('../models/Recipe');
 
 router.get('/profile', auth, async (req, res) => {
   try {
@@ -25,6 +26,44 @@ router.put('/profile', auth, async (req, res) => {
     if (onboardingComplete !== undefined) updates.onboardingComplete = onboardingComplete;
     const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true }).select('-password');
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get user's favorite recipes (populated)
+router.get('/favorites', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('favorites').select('favorites');
+    res.json(user?.favorites || []);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add recipe to favorites
+router.post('/favorites/:recipeId', auth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { favorites: req.params.recipeId } },
+      { new: true }
+    ).select('favorites');
+    res.json(user.favorites);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Remove recipe from favorites
+router.delete('/favorites/:recipeId', auth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { favorites: req.params.recipeId } },
+      { new: true }
+    ).select('favorites');
+    res.json(user.favorites);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
