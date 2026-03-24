@@ -40,10 +40,14 @@ const stepSchema = new mongoose.Schema({
 });
 
 const recipeSchema = new mongoose.Schema({
+  mealdbId: { type: String, unique: true, sparse: true },
+  spoonacularId: { type: String, unique: true, sparse: true },
   title: String,
   description: String,
   cuisine: String,
   imageUrl: String,
+  sourceUrl: String,
+  sourceName: String,
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
   cookingTime: Number,
   prepTime: Number,

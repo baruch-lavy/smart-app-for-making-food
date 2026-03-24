@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/useAuthStore'
+import { ToastProvider } from './components/ui/Toast'
 import Auth from './components/Auth'
 import Onboarding from './components/Onboarding'
 import Dashboard from './components/Dashboard'
@@ -10,6 +11,7 @@ import GuidedCooking from './components/GuidedCooking'
 import Pantry from './components/Pantry'
 import ShoppingList from './components/ShoppingList'
 import Profile from './components/Profile'
+import MealPlanner from './components/MealPlanner'
 import ModeSelect from './components/ModeSelect'
 import MealPlanner from './components/MealPlanner'
 import Analytics from './components/Analytics'
@@ -23,6 +25,21 @@ function ProtectedRoute({ children }) {
 export default function App() {
   const token = useAuthStore(s => s.token)
   return (
+    <ToastProvider>
+      <Routes>
+        <Route path="/" element={token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/login" element={<Auth />} />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/suggest" element={<ProtectedRoute><RecipeSuggestions /></ProtectedRoute>} />
+        <Route path="/recipe/:id" element={<ProtectedRoute><RecipeDetail /></ProtectedRoute>} />
+        <Route path="/cook/:id" element={<ProtectedRoute><GuidedCooking /></ProtectedRoute>} />
+        <Route path="/pantry" element={<ProtectedRoute><Pantry /></ProtectedRoute>} />
+        <Route path="/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/planner" element={<ProtectedRoute><MealPlanner /></ProtectedRoute>} />
+      </Routes>
+    </ToastProvider>
     <Routes>
       <Route path="/" element={token ? <Navigate to="/mode" replace /> : <Navigate to="/login" replace />} />
       <Route path="/login" element={<Auth />} />

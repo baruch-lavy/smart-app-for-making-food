@@ -15,6 +15,7 @@ app.use('/api/illustrations', require('./routes/illustrations'));
 app.use('/api/pantry', require('./routes/pantry'));
 app.use('/api/mealhistory', require('./routes/mealHistory'));
 app.use('/api/shopping', require('./routes/shopping'));
+app.use('/api/mealplan', require('./routes/mealPlan'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/mealplan', require('./routes/mealPlan'));
 app.use('/api/learning', require('./routes/learning'));

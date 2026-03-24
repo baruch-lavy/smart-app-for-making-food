@@ -1,11 +1,16 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, AlertTriangle } from 'lucide-react'
 import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, BarChart3, Book } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 import useAppStore from '../store/useAppStore'
 
+const INTENTS = [
+  { id: 'quick',  title: '⚡ Quick & Easy',        sub: 'Under 20 minutes',          color: 'from-yellow-50 to-orange-50 border-orange-200' },
+  { id: 'effort', title: '💪 I Will Put in Effort', sub: 'Let us make something special', color: 'from-blue-50 to-indigo-50 border-blue-200' },
+  { id: 'easy',   title: '😌 Something Easy',       sub: 'Low effort, big flavor',    color: 'from-green-50 to-emerald-50 border-green-200' },
 const TIME_OPTIONS = [
   { id: 'short', title: '⏱️ Short', sub: 'Under 25 minutes', color: 'from-yellow-50 to-orange-50 border-orange-200' },
   { id: 'medium', title: '� Medium', sub: '25 - 45 minutes', color: 'from-blue-50 to-indigo-50 border-blue-200' },
@@ -18,6 +23,8 @@ const DIFFICULTY_OPTIONS = [
   { id: 'hard', title: '🔥 Hard', sub: 'Challenging & rewarding', color: 'from-red-50 to-rose-50 border-rose-200' },
 ]
 
+const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+
 function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-50">
@@ -27,6 +34,9 @@ function BottomNav() {
 
       <Link to="/pantry" className="flex flex-col items-center gap-1 text-gray-400">
         <Package className="w-5 h-5" /><span className="text-xs">Pantry</span>
+      </Link>
+      <Link to="/planner" className="flex flex-col items-center gap-1 text-gray-400">
+        <Calendar className="w-5 h-5" /><span className="text-xs">Planner</span>
       </Link>
       <Link to="/shopping" className="flex flex-col items-center gap-1 text-gray-400">
         <ShoppingCart className="w-5 h-5" /><span className="text-xs">Shopping</span>
@@ -48,13 +58,24 @@ export default function Dashboard() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
+  const todayKey = DAY_NAMES[new Date().getDay()]
 
   const { data: pantryData } = useQuery({ queryKey: ['pantry'], queryFn: () => api.get('/pantry').then(r => r.data) })
   const { data: historyData } = useQuery({ queryKey: ['mealHistory'], queryFn: () => api.get('/mealhistory').then(r => r.data) })
+  const { data: mealPlan } = useQuery({ queryKey: ['mealplan'], queryFn: () => api.get('/mealplan').then(r => r.data) })
 
-  const pantryCount = pantryData?.items?.length || 0
+  const pantryItems = pantryData?.items || []
   const recentMeals = historyData?.slice(0, 3) || []
 
+  // Find items expiring within 2 days
+  const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+  const expiringItems = pantryItems.filter(i => i.expiresAt && new Date(i.expiresAt) <= soon && new Date(i.expiresAt) >= new Date())
+
+  // Today's planned meal
+  const todayPlan = mealPlan?.days?.[todayKey]
+
+  const handleIntent = (intentId) => {
+    setIntent(intentId)
   const handleGoSuggest = () => {
     // store an object with separate choices
     setIntent({ time: timeChoice, difficulty: diffChoice })
@@ -85,8 +106,52 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold text-gray-900 mb-1">
           Good {greeting}, {user?.name?.split(' ')[0]}! 👋
         </h2>
-        <p className="text-gray-500 mb-6">What are we cooking today?</p>
+        <p className="text-gray-500 mb-5">What are we cooking today?</p>
 
+        {/* Expiry alert banner */}
+        {expiringItems.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">
+                {expiringItems.length} item{expiringItems.length > 1 ? 's' : ''} expiring soon!
+              </p>
+              <p className="text-sm text-amber-700 mt-0.5">
+                {expiringItems.map(i => i.name).join(', ')}
+              </p>
+              <button onClick={() => { setIntent('quick'); navigate('/suggest') }}
+                className="mt-2 text-xs font-semibold text-amber-700 underline">
+                Find recipes using these →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Today's meal plan */}
+        {todayPlan?.recipeId && (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-5 hover:shadow-md transition-all cursor-pointer"
+            onClick={() => navigate(`/recipe/${todayPlan.recipeId}`)}>
+            <div className="flex items-center gap-3 p-4">
+              {todayPlan.imageUrl && (
+                <img src={todayPlan.imageUrl} alt={todayPlan.recipeTitle}
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-0.5">📅 Today's Plan</p>
+                <p className="font-bold text-gray-900 line-clamp-1">{todayPlan.recipeTitle}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Tap to view recipe →</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Intent buttons */}
+        <div className="grid gap-3 mb-6">
+          {INTENTS.map(({ id, title, sub, color }) => (
+            <button key={id} onClick={() => handleIntent(id)}
+              className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-5 text-left hover:shadow-md transition-all active:scale-[0.98]`}>
+              <div className="text-lg font-bold text-gray-900">{title}</div>
+              <div className="text-sm text-gray-500 mt-1">{sub}</div>
         <div className="grid gap-4 mb-4">
           <h4 className="text-sm font-semibold text-gray-700">How much time do you have?</h4>
           <div className="grid grid-cols-3 gap-3">
@@ -144,16 +209,22 @@ export default function Dashboard() {
           </Link>
         </div>
 
+        {/* Pantry quick view */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-primary" /> Your Pantry</h3>
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" /> Your Pantry
+            </h3>
             <Link to="/pantry" className="text-sm text-primary font-medium">Manage →</Link>
           </div>
           <p className="text-gray-500 text-sm">
-            {pantryCount > 0 ? `${pantryCount} ingredient${pantryCount !== 1 ? 's' : ''} available` : 'No items yet. Add ingredients for better suggestions!'}
+            {pantryItems.length > 0
+              ? `${pantryItems.length} ingredient${pantryItems.length !== 1 ? 's' : ''} available`
+              : 'No items yet. Add ingredients for better suggestions!'}
           </p>
         </div>
 
+        {/* Recent meals */}
         {recentMeals.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-bold text-gray-900 mb-3">🍽️ Recent Meals</h3>

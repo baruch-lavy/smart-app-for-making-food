@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const User = require('../models/User');
+const Recipe = require('../models/Recipe');
 const { getProviderState } = require('../services/aiRecipeService');
 
 router.get('/profile', auth, async (req, res) => {
@@ -42,6 +43,11 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// Get user's favorite recipes (populated)
+router.get('/favorites', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('favorites').select('favorites');
+    res.json(user?.favorites || []);
 router.get('/ai-status', auth, async (req, res) => {
   try {
     const providerState = getProviderState();
@@ -140,6 +146,15 @@ router.post('/unlock-achievement', auth, async (req, res) => {
   }
 });
 
+// Add recipe to favorites
+router.post('/favorites/:recipeId', auth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { favorites: req.params.recipeId } },
+      { new: true }
+    ).select('favorites');
+    res.json(user.favorites);
 router.post('/update-skill-progression', auth, async (req, res) => {
   try {
     const { technique, levelIncrease } = req.body;
@@ -173,6 +188,15 @@ router.post('/update-skill-progression', auth, async (req, res) => {
   }
 });
 
+// Remove recipe from favorites
+router.delete('/favorites/:recipeId', auth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { favorites: req.params.recipeId } },
+      { new: true }
+    ).select('favorites');
+    res.json(user.favorites);
 router.get('/stats', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');

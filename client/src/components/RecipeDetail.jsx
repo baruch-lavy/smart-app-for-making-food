@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Clock, Users, ChefHat, ShoppingCart, CheckSquare, Square, AlertCircle, Heart, Minus, Plus, ExternalLink } from 'lucide-react'
+import api from '../services/api'
+import { useToast } from './ui/Toast'
 import { ArrowLeft, Clock, Users, ChefHat, ShoppingCart, CheckSquare, Square, Sparkles } from 'lucide-react'
 import { ArrowLeft, Clock, Users, ChefHat, ShoppingCart, CheckSquare, Square, AlertCircle } from 'lucide-react'
 import api from '../services/api'
@@ -13,18 +16,22 @@ export default function RecipeDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { addToast } = useToast()
   const [checked, setChecked] = useState([])
   const childrenMode = useAppStore(s => s.childrenMode)
   const [stepImages, setStepImages] = useState({})
   const isGenerated = location.pathname.includes('/recipe/generated/')
   const routeRecipe = location.state?.recipe
   const [addResult, setAddResult] = useState(null)
+  const [servings, setServings] = useState(null)
 
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['recipe', isGenerated ? `generated:${id}` : id],
     queryFn: () => api.get(isGenerated ? `/recipes/generated/${id}` : `/recipes/${id}`).then(r => r.data),
     initialData: routeRecipe,
   })
+
+  const { data: profileData } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/users/profile').then(r => r.data) })
 
   const shoppingMutation = useMutation({
     mutationFn: (items) => api.post('/shopping/bulk-add', { items }),
@@ -35,6 +42,28 @@ export default function RecipeDetail() {
     enabled: !!id,
   })
 
+  // Initialize servings when recipe loads
+  React.useEffect(() => {
+    if (recipe && servings === null) setServings(recipe.servings)
+  }, [recipe])
+
+  const isFavorite = profileData?.favorites?.includes(id) || false
+
+  const addFavMutation = useMutation({
+    mutationFn: () => api.post(`/users/favorites/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries(['profile']); addToast('Added to favorites! ❤️') }
+  })
+
+  const removeFavMutation = useMutation({
+    mutationFn: () => api.delete(`/users/favorites/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries(['profile']); addToast('Removed from favorites', 'info') }
+  })
+
+  const toggleFavorite = () => {
+    if (isFavorite) removeFavMutation.mutate()
+    else addFavMutation.mutate()
+  }
+
   // Smart add: only missing from pantry
   const smartAddMutation = useMutation({
     mutationFn: () => api.post(`/shopping/from-recipe/${id}`).then(r => r.data),
@@ -44,7 +73,7 @@ export default function RecipeDetail() {
   // Manual add: unchecked items (original behaviour)
   const manualAddMutation = useMutation({
     mutationFn: (items) => Promise.all(items.map(ing => api.post('/shopping/add', { name: ing.name, quantity: ing.amount, unit: ing.unit, recipeSource: recipe?.title }))),
-    onSuccess: () => { qc.invalidateQueries(['shopping']); alert('Added to shopping list!') }
+    onSuccess: () => { qc.invalidateQueries(['shopping']); addToast('Added to shopping list!') }
   })
 
   const toggleCheck = (idx) => setChecked(c => c.includes(idx) ? c.filter(i => i !== idx) : [...c, idx])
@@ -67,6 +96,8 @@ export default function RecipeDetail() {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-400">Loading recipe...</div></div>
   if (!recipe) return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-400">Recipe not found</div></div>
 
+  const currentServings = servings ?? recipe.servings
+  const scaleFactor = currentServings / recipe.servings
   // fetch simple SVG illustrations for steps when childrenMode is on
   React.useEffect(() => {
     let mounted = true
@@ -88,14 +119,33 @@ export default function RecipeDetail() {
   }, [childrenMode, recipe])
   const missingCount = missingData?.missing?.length ?? 0
 
+  const formatAmount = (amount) => {
+    if (!amount) return amount
+    const scaled = amount * scaleFactor
+    if (Number.isInteger(scaled)) return String(scaled)
+    return scaled.toFixed(1)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft className="w-5 h-5" /></button>
-          <h1 className="text-lg font-bold text-gray-900 truncate">{recipe.title}</h1>
+          <h1 className="text-lg font-bold text-gray-900 truncate flex-1">{recipe.title}</h1>
+          <button
+            onClick={toggleFavorite}
+            disabled={addFavMutation.isPending || removeFavMutation.isPending}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <Heart className={`w-5 h-5 transition-colors ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} />
+          </button>
         </div>
       </header>
+
+      {recipe.imageUrl && (
+        <div className="max-w-2xl mx-auto">
+          <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-56 object-cover" />
+        </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 pt-5">
         <div className="flex items-center gap-2 mb-3">
@@ -146,7 +196,25 @@ export default function RecipeDetail() {
           <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /><div><div className="text-xs text-gray-500">Total Time</div><div className="font-bold text-sm">{recipe.prepTime + recipe.cookingTime} min</div></div></div>
           <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-orange-400" /><div><div className="text-xs text-gray-500">Prep</div><div className="font-bold text-sm">{recipe.prepTime} min</div></div></div>
           <div className="flex items-center gap-2"><ChefHat className="w-4 h-4 text-orange-400" /><div><div className="text-xs text-gray-500">Cook</div><div className="font-bold text-sm">{recipe.cookingTime} min</div></div></div>
-          <div className="flex items-center gap-2"><Users className="w-4 h-4 text-primary" /><div><div className="text-xs text-gray-500">Serves</div><div className="font-bold text-sm">{recipe.servings}</div></div></div>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            <div>
+              <div className="text-xs text-gray-500">Serves</div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setServings(s => Math.max(1, (s ?? recipe.servings) - 1))}
+                  className="w-6 h-6 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors">
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="font-bold text-sm w-4 text-center">{currentServings}</span>
+                <button
+                  onClick={() => setServings(s => (s ?? recipe.servings) + 1)}
+                  className="w-6 h-6 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors">
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {recipe.nutritionInfo && (
@@ -206,7 +274,7 @@ export default function RecipeDetail() {
                     {ing.name}
                     {isMissing && <span className="ml-1.5 text-xs bg-red-100 text-red-600 rounded-full px-1.5 py-0.5">missing</span>}
                   </span>
-                  <span className="text-sm font-medium text-primary">{ing.amount} {ing.unit}</span>
+                  <span className="text-sm font-medium text-primary">{formatAmount(ing.amount)} {ing.unit}</span>
                 </button>
               )
             })}
@@ -244,6 +312,14 @@ export default function RecipeDetail() {
             <ChefHat className="w-5 h-5" /> Start Cooking!
           </button>
         </div>
+
+        {recipe.sourceUrl && (
+          <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer"
+            className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-primary transition-colors py-2">
+            <ExternalLink className="w-4 h-4" />
+            View original recipe on {recipe.sourceName || new URL(recipe.sourceUrl).hostname}
+          </a>
+        )}
       </div>
     </div>
   )

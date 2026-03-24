@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema({
   tastePreferences: [String],
   dislikes: [String],
   dietaryRestrictions: [String],
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Recipe' }],
   allergies: [String],
   learningMode: { type: Boolean, default: false },
   onboardingComplete: { type: Boolean, default: false },

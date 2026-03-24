@@ -1,3 +1,5 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import React, { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
@@ -25,6 +27,16 @@ export default function GuidedCooking() {
   const isGenerated = location.pathname.includes('/cook/generated/')
   const routeRecipe = location.state?.recipe
 
+  // Timer state
+  const [timerOpen, setTimerOpen] = useState(false)
+  const [timerMinutes, setTimerMinutes] = useState(5)
+  const [timerActive, setTimerActive] = useState(false)
+  const [timerSeconds, setTimerSeconds] = useState(0)
+
+  // Swipe gesture ref
+  const touchStartX = useRef(null)
+
+  const { data: recipe, isLoading } = useQuery({ queryKey: ['recipe', id], queryFn: () => api.get(`/recipes/${id}`).then(r => r.data) })
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['cook-recipe', isGenerated ? `generated:${id}` : id],
     queryFn: () => api.get(isGenerated ? `/recipes/generated/${id}` : `/recipes/${id}`).then(r => r.data),
@@ -40,6 +52,26 @@ export default function GuidedCooking() {
     mutationFn: ({ histId, ...data }) => api.put(`/mealhistory/${histId}/rate`, data),
     onSuccess: () => { stopCooking(); navigate('/dashboard') }
   })
+
+  // Reset timer when step changes
+  useEffect(() => {
+    setTimerOpen(false)
+    setTimerActive(false)
+    setTimerSeconds(0)
+    setTimerMinutes(5)
+  }, [cookingStep])
+
+  // Timer countdown
+  useEffect(() => {
+    if (!timerActive) return
+    const interval = setInterval(() => {
+      setTimerSeconds(s => {
+        if (s <= 1) { clearInterval(interval); setTimerActive(false); return 0 }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [timerActive])
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
   if (!recipe) return null
@@ -66,6 +98,33 @@ export default function GuidedCooking() {
     rateMutation.mutate({ histId: historyId, rating, feedback, notes })
   }
 
+  const startTimer = () => {
+    setTimerSeconds(timerMinutes * 60)
+    setTimerActive(true)
+  }
+
+  const formatTimerDisplay = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0')
+    const s = (secs % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    touchStartX.current = null
+    if (Math.abs(delta) < 50) return
+    if (delta > 0) {
+      handleNext()
+    } else {
+      if (cookingStep > 0) { prevStep(); setShowTip(false); setShowWhy(false) }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="px-4 py-3 flex items-center gap-3 border-b border-gray-800">
@@ -80,10 +139,58 @@ export default function GuidedCooking() {
         <div className="h-full bg-primary transition-all duration-300 rounded-r-full" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 py-6">
+      <div
+        className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 py-6"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="flex-1">
           <div className="text-6xl font-black text-gray-700 mb-4">{cookingStep + 1}</div>
           <p className="text-2xl font-medium leading-relaxed text-white mb-6">{currentStepData?.instruction}</p>
+
+          {/* Step Timer */}
+          <div className="mb-4">
+            {!timerOpen ? (
+              <button onClick={() => setTimerOpen(true)}
+                className="flex items-center gap-2 text-sm text-blue-300 font-medium hover:text-blue-200 transition-colors">
+                ⏱️ Set Timer
+              </button>
+            ) : (
+              <div className="bg-gray-800 rounded-2xl p-4">
+                {timerActive || timerSeconds > 0 ? (
+                  <div className="text-center">
+                    {timerSeconds === 0 ? (
+                      <div className="text-2xl font-bold text-yellow-400 animate-pulse">⏰ Time's up!</div>
+                    ) : (
+                      <>
+                        <div className="text-5xl font-black text-white mb-3 font-mono tracking-widest">{formatTimerDisplay(timerSeconds)}</div>
+                        <button onClick={() => { setTimerActive(false); setTimerSeconds(0) }}
+                          className="text-sm text-gray-400 hover:text-white transition-colors">
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number" min="1" max="60" value={timerMinutes}
+                      onChange={e => setTimerMinutes(Math.min(60, Math.max(1, Number(e.target.value))))}
+                      className="w-20 px-3 py-2 bg-gray-700 text-white rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-gray-400 text-sm">min</span>
+                    <button onClick={startTimer}
+                      className="flex-1 py-2 bg-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-colors">
+                      ▶ Start
+                    </button>
+                    <button onClick={() => setTimerOpen(false)} className="p-2 text-gray-400 hover:text-white transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {currentStepData?.whyItMatters && (
             <div className="mb-3">
