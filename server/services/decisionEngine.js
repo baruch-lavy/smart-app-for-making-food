@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Recipe = require('../models/Recipe');
 const MealHistory = require('../models/MealHistory');
 
+const MAX_MAIN_RESULTS = 6;
+
 async function suggestRecipes({ userId, intent, availableIngredients, maxTime, difficulty, mainIngredient, childrenMode }) {
   const user = await User.findById(userId);
   const { tastePreferences = [], dislikes = [], dietaryRestrictions = [] } = user || {};
@@ -107,7 +109,7 @@ async function suggestRecipes({ userId, intent, availableIngredients, maxTime, d
   });
 
   scored.sort((a, b) => b.score - a.score);
-  const topMains = scored.slice(0, 3).map(s => s.recipe);
+  const topMains = scored.slice(0, MAX_MAIN_RESULTS).map(s => s.recipe);
 
   // find a side suggestion: prefer a different recipe with same cuisine and short time
   let side = null;
