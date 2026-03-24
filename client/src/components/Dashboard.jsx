@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star } from 'lucide-react'
+import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, BarChart3, Book } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 import useAppStore from '../store/useAppStore'
@@ -116,6 +116,32 @@ export default function Dashboard() {
               🔍 Find Recipes
             </button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Link 
+            to="/meal-planner"
+            className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 hover:shadow-md transition"
+          >
+            <Calendar className="w-6 h-6 text-purple-600 mb-2" />
+            <div className="text-sm font-bold text-gray-800">Meal Planner</div>
+          </Link>
+          
+          <Link 
+            to="/analytics"
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 hover:shadow-md transition"
+          >
+            <BarChart3 className="w-6 h-6 text-blue-600 mb-2" />
+            <div className="text-sm font-bold text-gray-800">Analytics</div>
+          </Link>
+          
+          <Link 
+            to="/learning"
+            className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 hover:shadow-md transition"
+          >
+            <Book className="w-6 h-6 text-green-600 mb-2" />
+            <div className="text-sm font-bold text-gray-800">Learning</div>
+          </Link>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">

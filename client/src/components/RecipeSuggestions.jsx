@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Search, Clock, ChevronRight, Sparkles, ShieldCheck, X } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Search, Clock, ChevronRight, Plus, X, ShoppingCart, AlertCircle, RefreshCw } from 'lucide-react'
 import api from '../services/api'
 import useAppStore from '../store/useAppStore'
 
@@ -28,7 +28,7 @@ function getRecipePath(recipe) {
 
 export default function RecipeSuggestions() {
   const navigate = useNavigate()
-  // selectedIntent is now an object: { time: 'short'|'medium'|'long', difficulty: 'easy'|'medium'|'hard' }
+  const qc = useQueryClient()
   const selectedIntent = useAppStore(s => s.selectedIntent)
   // we now ask for a single main ingredient (string)
   const selectedIngredients = useAppStore(s => s.selectedIngredients)
@@ -44,6 +44,7 @@ export default function RecipeSuggestions() {
     kidFriendly: false,
     hasImage: false,
   })
+  const [addedRecipes, setAddedRecipes] = useState({})
 
   const { data: pantryData } = useQuery({ queryKey: ['pantry'], queryFn: () => api.get('/pantry').then(r => r.data) })
   const pantryItems = pantryData?.items || []
@@ -106,6 +107,25 @@ export default function RecipeSuggestions() {
 
   const hasActiveFilters = Object.values(filters).some(Boolean)
   const resultLabel = SORT_OPTIONS.find(option => option.value === sortBy)?.label || 'Recommended'
+
+  const addToShoppingMutation = useMutation({
+    mutationFn: (recipeId) => api.post(`/shopping/from-recipe/${recipeId}`).then(r => r.data),
+    onSuccess: (data, recipeId) => {
+      qc.invalidateQueries(['shopping'])
+      setAddedRecipes(prev => ({ ...prev, [recipeId]: data }))
+    }
+  })
+
+  const addCustom = () => {
+    const trimmed = customIngredient.trim()
+    if (trimmed && !selectedIngredients.includes(trimmed)) toggleIngredient(trimmed)
+    setCustomIngredient('')
+  }
+
+  const handleSuggest = () => {
+    setAddedRecipes({})
+    mutation.mutate({ intent: selectedIntent, availableIngredients: selectedIngredients })
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -243,6 +263,15 @@ export default function RecipeSuggestions() {
                       className="w-full h-52 object-cover rounded-2xl mb-4 border border-gray-100"
                     />
                   )}
+            <h3 className="font-bold text-gray-900">✨ Suggested for You</h3>
+            {suggestions.map(recipe => {
+              const addResult = addedRecipes[recipe._id]
+              const isAdded = !!addResult
+              const isAdding = addToShoppingMutation.isPending && addToShoppingMutation.variables === recipe._id
+
+              return (
+                <div key={recipe._id} className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md transition-all">
+                  {/* Header row */}
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <h4 className="font-bold text-gray-900">{recipe.title}</h4>
@@ -252,13 +281,16 @@ export default function RecipeSuggestions() {
                         {recipe.source?.siteName && <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{recipe.source.siteName}</span>}
                       </div>
                     </div>
-                    {match !== null && (
+                    {recipe.matchPercent !== null && recipe.matchPercent !== undefined && (
                       <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-bold text-primary">{match}%</div>
+                        <div className={`text-lg font-bold ${recipe.matchPercent >= 80 ? 'text-green-600' : recipe.matchPercent >= 50 ? 'text-primary' : 'text-gray-400'}`}>
+                          {recipe.matchPercent}%
+                        </div>
                         <div className="text-xs text-gray-400">match</div>
                       </div>
                     )}
                   </div>
+
                   <div className="flex items-center gap-1 text-gray-400 text-sm mb-3">
                     <Clock className="w-4 h-4" />
                     <span>{recipe.metrics?.totalTime || (recipe.prepTime + recipe.cookingTime)} min total</span>
@@ -284,6 +316,68 @@ export default function RecipeSuggestions() {
                       className="inline-flex items-center gap-1 rounded-full bg-gray-900 text-white px-4 py-2 font-medium text-sm hover:gap-2 transition-all">
                       View Recipe <ChevronRight className="w-4 h-4" />
                     </button>
+
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{recipe.description}</p>
+
+                  {/* Missing ingredients */}
+                  {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
+                    <div className="bg-red-50 rounded-xl p-3 mb-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <AlertCircle className="w-4 h-4 text-red-400" />
+                        <span className="text-xs font-semibold text-red-600">
+                          Missing {recipe.missingIngredients.length} ingredient{recipe.missingIngredients.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {recipe.missingIngredients.map((ing, i) => (
+                          <span key={i} className="text-xs bg-red-100 text-red-700 rounded-full px-2 py-0.5">
+                            {ing.name}{ing.amount ? ` (${ing.amount}${ing.unit ? ' ' + ing.unit : ''})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Substitutions */}
+                  {recipe.substitutions && recipe.substitutions.length > 0 && (
+                    <div className="bg-blue-50 rounded-xl p-3 mb-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-xs font-semibold text-blue-600">Substitutions available</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {recipe.substitutions.map((s, i) => (
+                          <p key={i} className="text-xs text-blue-700">
+                            No <strong>{s.ingredient}</strong>? Use <strong>{s.substitute}</strong>
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <button onClick={() => navigate(`/recipe/${recipe._id}`)}
+                      className="flex items-center gap-1 text-primary font-medium text-sm hover:gap-2 transition-all">
+                      View Recipe <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
+                      isAdded ? (
+                        <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                          ✅ {addResult.added} item{addResult.added !== 1 ? 's' : ''} added to list
+                          {addResult.skipped > 0 && <span className="text-gray-400"> ({addResult.skipped} already there)</span>}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => addToShoppingMutation.mutate(recipe._id)}
+                          disabled={isAdding}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-primary rounded-xl text-xs font-semibold hover:bg-orange-200 transition-colors disabled:opacity-50">
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          {isAdding ? 'Adding...' : `🛒 Add ${recipe.missingIngredients.length} missing`}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               )

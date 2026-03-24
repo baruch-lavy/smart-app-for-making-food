@@ -11,6 +11,9 @@ import Pantry from './components/Pantry'
 import ShoppingList from './components/ShoppingList'
 import Profile from './components/Profile'
 import ModeSelect from './components/ModeSelect'
+import MealPlanner from './components/MealPlanner'
+import Analytics from './components/Analytics'
+import LearningCenter from './components/LearningCenter'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore(s => s.token)
@@ -34,6 +37,9 @@ export default function App() {
       <Route path="/pantry" element={<ProtectedRoute><Pantry /></ProtectedRoute>} />
       <Route path="/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/meal-planner" element={<ProtectedRoute><MealPlanner /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+      <Route path="/learning" element={<ProtectedRoute><LearningCenter /></ProtectedRoute>} />
     </Routes>
   )
 }

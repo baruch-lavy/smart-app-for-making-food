@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Clock, Users, ChefHat, ShoppingCart, CheckSquare, Square, Sparkles } from 'lucide-react'
+import { ArrowLeft, Clock, Users, ChefHat, ShoppingCart, CheckSquare, Square, AlertCircle } from 'lucide-react'
 import api from '../services/api'
 import useAppStore from '../store/useAppStore'
 
@@ -17,6 +18,7 @@ export default function RecipeDetail() {
   const [stepImages, setStepImages] = useState({})
   const isGenerated = location.pathname.includes('/recipe/generated/')
   const routeRecipe = location.state?.recipe
+  const [addResult, setAddResult] = useState(null)
 
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['recipe', isGenerated ? `generated:${id}` : id],
@@ -27,11 +29,27 @@ export default function RecipeDetail() {
   const shoppingMutation = useMutation({
     mutationFn: (items) => api.post('/shopping/bulk-add', { items }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['shopping'] }); alert('Added to shopping list!') }
+  const { data: missingData } = useQuery({
+    queryKey: ['missing', id],
+    queryFn: () => api.get(`/shopping/missing/${id}`).then(r => r.data),
+    enabled: !!id,
+  })
+
+  // Smart add: only missing from pantry
+  const smartAddMutation = useMutation({
+    mutationFn: () => api.post(`/shopping/from-recipe/${id}`).then(r => r.data),
+    onSuccess: (data) => { qc.invalidateQueries(['shopping']); setAddResult(data) }
+  })
+
+  // Manual add: unchecked items (original behaviour)
+  const manualAddMutation = useMutation({
+    mutationFn: (items) => Promise.all(items.map(ing => api.post('/shopping/add', { name: ing.name, quantity: ing.amount, unit: ing.unit, recipeSource: recipe?.title }))),
+    onSuccess: () => { qc.invalidateQueries(['shopping']); alert('Added to shopping list!') }
   })
 
   const toggleCheck = (idx) => setChecked(c => c.includes(idx) ? c.filter(i => i !== idx) : [...c, idx])
 
-  const addToShopping = () => {
+  const addUncheckedToShopping = () => {
     if (!recipe) return
     const missing = recipe.ingredients
       .filter((_, i) => !checked.includes(i))
@@ -68,6 +86,7 @@ export default function RecipeDetail() {
     fetchAll()
     return () => { mounted = false }
   }, [childrenMode, recipe])
+  const missingCount = missingData?.missing?.length ?? 0
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -142,16 +161,55 @@ export default function RecipeDetail() {
           </div>
         )}
 
+        {/* Missing ingredients banner */}
+        {missingData && missingCount > 0 && (
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-semibold text-red-700">
+                {missingCount} missing ingredient{missingCount > 1 ? 's' : ''} from your pantry
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {missingData.missing.map((ing, i) => (
+                <span key={i} className="text-xs bg-red-100 text-red-700 rounded-full px-2.5 py-1">
+                  {ing.name}{ing.amount ? ` · ${ing.amount}${ing.unit ? ' ' + ing.unit : ''}` : ''}
+                </span>
+              ))}
+            </div>
+            {addResult ? (
+              <p className="text-sm text-green-600 font-medium">
+                ✅ {addResult.added} item{addResult.added !== 1 ? 's' : ''} added to your shopping list
+                {addResult.skipped > 0 && <span className="text-gray-400"> ({addResult.skipped} already there)</span>}
+              </p>
+            ) : (
+              <button
+                onClick={() => smartAddMutation.mutate()}
+                disabled={smartAddMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50">
+                <ShoppingCart className="w-4 h-4" />
+                {smartAddMutation.isPending ? 'Adding...' : `Add all ${missingCount} to Shopping List`}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
           <h3 className="font-bold text-gray-900 mb-4">🧺 Ingredients</h3>
           <div className="space-y-2">
-            {recipe.ingredients.map((ing, i) => (
-              <button key={i} onClick={() => toggleCheck(i)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-left">
-                {checked.includes(i) ? <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" /> : <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />}
-                <span className={`flex-1 text-sm ${checked.includes(i) ? 'line-through text-gray-400' : 'text-gray-700'}`}>{ing.name}</span>
-                <span className="text-sm font-medium text-primary">{ing.amount} {ing.unit}</span>
-              </button>
-            ))}
+            {recipe.ingredients.map((ing, i) => {
+              const isMissing = missingData?.missing?.some(m => m.name.toLowerCase() === ing.name.toLowerCase())
+              return (
+                <button key={i} onClick={() => toggleCheck(i)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-left">
+                  {checked.includes(i) ? <CheckSquare className="w-5 h-5 text-primary flex-shrink-0" /> : <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />}
+                  <span className={`flex-1 text-sm ${checked.includes(i) ? 'line-through text-gray-400' : isMissing ? 'text-red-600' : 'text-gray-700'}`}>
+                    {ing.name}
+                    {isMissing && <span className="ml-1.5 text-xs bg-red-100 text-red-600 rounded-full px-1.5 py-0.5">missing</span>}
+                  </span>
+                  <span className="text-sm font-medium text-primary">{ing.amount} {ing.unit}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -177,6 +235,9 @@ export default function RecipeDetail() {
             disabled={shoppingMutation.isPending}
             className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-orange-50 transition-colors">
             <ShoppingCart className="w-5 h-5" /> {shoppingMutation.isPending ? 'Adding...' : 'Add to Shopping List'}
+          <button onClick={addUncheckedToShopping}
+            className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-orange-50 transition-colors">
+            <ShoppingCart className="w-5 h-5" /> Add Unchecked
           </button>
           <button onClick={() => navigate(recipe.isGenerated ? `/cook/generated/${recipe._id}` : `/cook/${recipe._id}`, { state: { recipe } })}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors">
