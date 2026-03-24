@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star } from 'lucide-react'
@@ -6,10 +6,16 @@ import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 import useAppStore from '../store/useAppStore'
 
-const INTENTS = [
-  { id: 'quick', icon: Zap, title: '⚡ Quick & Easy', sub: 'Under 20 minutes', color: 'from-yellow-50 to-orange-50 border-orange-200' },
-  { id: 'effort', icon: Trophy, title: '💪 I Will Put in Effort', sub: 'Let us make something special', color: 'from-blue-50 to-indigo-50 border-blue-200' },
-  { id: 'easy', icon: Smile, title: '😌 Something Easy', sub: 'Low effort, big flavor', color: 'from-green-50 to-emerald-50 border-green-200' },
+const TIME_OPTIONS = [
+  { id: 'short', title: '⏱️ Short', sub: 'Under 25 minutes', color: 'from-yellow-50 to-orange-50 border-orange-200' },
+  { id: 'medium', title: '� Medium', sub: '25 - 45 minutes', color: 'from-blue-50 to-indigo-50 border-blue-200' },
+  { id: 'long', title: '🍲 Long', sub: 'Over 45 minutes', color: 'from-green-50 to-emerald-50 border-green-200' },
+]
+
+const DIFFICULTY_OPTIONS = [
+  { id: 'easy', title: '😌 Easy', sub: 'Low effort', color: 'from-green-50 to-emerald-50 border-green-200' },
+  { id: 'medium', title: '🟡 Medium', sub: 'Some prep', color: 'from-yellow-50 to-amber-50 border-amber-200' },
+  { id: 'hard', title: '🔥 Hard', sub: 'Challenging & rewarding', color: 'from-red-50 to-rose-50 border-rose-200' },
 ]
 
 function BottomNav() {
@@ -18,6 +24,7 @@ function BottomNav() {
       <Link to="/dashboard" className="flex flex-col items-center gap-1 text-primary">
         <ChefHat className="w-5 h-5" /><span className="text-xs">Home</span>
       </Link>
+
       <Link to="/pantry" className="flex flex-col items-center gap-1 text-gray-400">
         <Package className="w-5 h-5" /><span className="text-xs">Pantry</span>
       </Link>
@@ -36,6 +43,8 @@ export default function Dashboard() {
   const user = useAuthStore(s => s.user)
   const logout = useAuthStore(s => s.logout)
   const setIntent = useAppStore(s => s.setIntent)
+  const [timeChoice, setTimeChoice] = useState(null)
+  const [diffChoice, setDiffChoice] = useState(null)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
@@ -46,8 +55,9 @@ export default function Dashboard() {
   const pantryCount = pantryData?.items?.length || 0
   const recentMeals = historyData?.slice(0, 3) || []
 
-  const handleIntent = (intentId) => {
-    setIntent(intentId)
+  const handleGoSuggest = () => {
+    // store an object with separate choices
+    setIntent({ time: timeChoice, difficulty: diffChoice })
     navigate('/suggest')
   }
 
@@ -58,6 +68,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <ChefHat className="w-7 h-7 text-primary" />
             <span className="text-xl font-bold text-gray-900">CookSmart</span>
+            {/* children mode selected on mode page */}
           </div>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -76,14 +87,35 @@ export default function Dashboard() {
         </h2>
         <p className="text-gray-500 mb-6">What are we cooking today?</p>
 
-        <div className="grid gap-4 mb-8">
-          {INTENTS.map(({ id, title, sub, color }) => (
-            <button key={id} onClick={() => handleIntent(id)}
-              className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-5 text-left hover:shadow-md transition-all active:scale-[0.98]`}>
-              <div className="text-lg font-bold text-gray-900">{title}</div>
-              <div className="text-sm text-gray-500 mt-1">{sub}</div>
+        <div className="grid gap-4 mb-4">
+          <h4 className="text-sm font-semibold text-gray-700">How much time do you have?</h4>
+          <div className="grid grid-cols-3 gap-3">
+            {TIME_OPTIONS.map(({ id, title, sub, color }) => (
+              <button key={id} onClick={() => setTimeChoice(id)}
+                className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.98] ${timeChoice === id ? 'ring-2 ring-primary' : ''}`}>
+                <div className="text-sm font-bold text-gray-900">{title}</div>
+                <div className="text-xs text-gray-500 mt-1">{sub}</div>
+              </button>
+            ))}
+          </div>
+
+          <h4 className="text-sm font-semibold text-gray-700 mt-4">Difficulty</h4>
+          <div className="grid grid-cols-3 gap-3">
+            {DIFFICULTY_OPTIONS.map(({ id, title, sub, color }) => (
+              <button key={id} onClick={() => setDiffChoice(id)}
+                className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.98] ${diffChoice === id ? 'ring-2 ring-primary' : ''}`}>
+                <div className="text-sm font-bold text-gray-900">{title}</div>
+                <div className="text-xs text-gray-500 mt-1">{sub}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            <button onClick={handleGoSuggest} disabled={!timeChoice && !diffChoice}
+              className="w-full bg-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors disabled:opacity-60">
+              🔍 Find Recipes
             </button>
-          ))}
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">

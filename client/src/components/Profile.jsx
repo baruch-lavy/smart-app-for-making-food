@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChefHat, Package, ShoppingCart, User, LogOut, ToggleLeft, ToggleRight, Save } from 'lucide-react'
+import { ChefHat, Package, ShoppingCart, User, LogOut, ToggleLeft, ToggleRight, Save, Sparkles, Bot, Globe, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 
@@ -38,6 +38,7 @@ export default function Profile() {
 
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/users/profile').then(r => r.data) })
   const { data: historyData } = useQuery({ queryKey: ['mealHistory'], queryFn: () => api.get('/mealhistory').then(r => r.data) })
+  const { data: aiStatus } = useQuery({ queryKey: ['aiStatus'], queryFn: () => api.get('/users/ai-status').then(r => r.data) })
 
   const [editing, setEditing] = useState(false)
   const [tastes, setTastes] = useState([])
@@ -98,6 +99,54 @@ export default function Profile() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="rounded-[28px] border border-orange-200 bg-[linear-gradient(135deg,#fff7ed_0%,#fff1f2_45%,#fffef7_100%)] p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-primary border border-orange-200 mb-3">
+                <Sparkles className="w-3.5 h-3.5" /> AI Kitchen Status
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Recipe generation services</h3>
+              <p className="text-sm text-gray-600 mt-1">See whether live web search, Gemini generation, and images are fully configured.</p>
+            </div>
+            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${aiStatus?.readyForFullAiRecipes ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              {aiStatus?.readyForFullAiRecipes ? 'Ready' : 'Partial'}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            {(aiStatus?.services || [
+              { key: 'gemini', label: 'Gemini generation', configured: false, detail: 'Loading status...' },
+              { key: 'search', label: 'Internet recipe search', configured: false, detail: 'Loading status...' },
+              { key: 'images', label: 'Recipe images', configured: false, detail: 'Loading status...' },
+            ]).map(service => {
+              const icon = service.key === 'gemini' ? Bot : service.key === 'search' ? Globe : ImageIcon
+              const Icon = icon
+              return (
+                <div key={service.key} className="rounded-2xl bg-white/90 border border-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-orange-50 text-primary flex items-center justify-center">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    {service.configured
+                      ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                      : <AlertCircle className="w-5 h-5 text-amber-500" />}
+                  </div>
+                  <h4 className="font-semibold text-gray-900 text-sm">{service.label}</h4>
+                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">{service.detail}</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {aiStatus?.providerState && (
+            <div className="mt-4 text-xs text-gray-600 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/80 border border-orange-200 px-3 py-1">Preferred search: {aiStatus.providerState.preferredSearchProvider}</span>
+              <span className="rounded-full bg-white/80 border border-orange-200 px-3 py-1">Active search: {aiStatus.providerState.activeSearchProvider}</span>
+              <span className="rounded-full bg-white/80 border border-orange-200 px-3 py-1">Image provider: {aiStatus.providerState.imageProvider}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-3">
