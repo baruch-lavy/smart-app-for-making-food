@@ -48,6 +48,20 @@ export default function ShoppingList() {
 
   const checkedCount = items.filter(i => i.checked).length
 
+  // Group items by recipeSource
+  const grouped = items.reduce((acc, item) => {
+    const key = item.recipeSource || '__manual__'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(item)
+    return acc
+  }, {})
+
+  const groupKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === '__manual__') return 1
+    if (b === '__manual__') return -1
+    return a.localeCompare(b)
+  })
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
@@ -84,19 +98,36 @@ export default function ShoppingList() {
             <p className="text-sm mt-1">Add items manually or get suggestions from a recipe!</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {items.map(item => (
-              <button key={item._id} onClick={() => checkMutation.mutate(item._id)}
-                className={`w-full flex items-center gap-3 p-4 rounded-xl border bg-white text-left transition-all ${item.checked ? 'opacity-60 border-gray-100' : 'border-gray-200 hover:border-primary'}`}>
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${item.checked ? 'bg-primary border-primary' : 'border-gray-300'}`}>
-                  {item.checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+          <div className="space-y-5">
+            {groupKeys.map(groupKey => (
+              <div key={groupKey}>
+                {/* Group header */}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {groupKey === '__manual__' ? '📝 Added manually' : `🍳 ${groupKey}`}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400">
+                    {grouped[groupKey].filter(i => i.checked).length}/{grouped[groupKey].length}
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <span className={`font-medium text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
-                  {(item.quantity || item.unit) && <span className="text-xs text-gray-400 ml-2">{item.quantity} {item.unit}</span>}
-                  {item.recipeSource && <span className="text-xs text-orange-400 ml-2">({item.recipeSource})</span>}
+
+                {/* Items in this group */}
+                <div className="space-y-2">
+                  {grouped[groupKey].map(item => (
+                    <button key={item._id} onClick={() => checkMutation.mutate(item._id)}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border bg-white text-left transition-all ${item.checked ? 'opacity-60 border-gray-100' : 'border-gray-200 hover:border-primary'}`}>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${item.checked ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                        {item.checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <div className="flex-1">
+                        <span className={`font-medium text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
+                        {(item.quantity || item.unit) && <span className="text-xs text-gray-400 ml-2">{item.quantity} {item.unit}</span>}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
