@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import React, { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight, Lightbulb, HelpCircle, Star, X } from 'lucide-react'
 import api from '../services/api'
@@ -10,7 +8,6 @@ import useAppStore from '../store/useAppStore'
 
 export default function GuidedCooking() {
   const { id } = useParams()
-  const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const cookingStep = useAppStore(s => s.cookingStep)
@@ -24,24 +21,14 @@ export default function GuidedCooking() {
   const [feedback, setFeedback] = useState('')
   const [notes, setNotes] = useState('')
   const [historyId, setHistoryId] = useState(null)
-  const isGenerated = location.pathname.includes('/cook/generated/')
-  const routeRecipe = location.state?.recipe
 
-  // Timer state
   const [timerOpen, setTimerOpen] = useState(false)
   const [timerMinutes, setTimerMinutes] = useState(5)
   const [timerActive, setTimerActive] = useState(false)
   const [timerSeconds, setTimerSeconds] = useState(0)
-
-  // Swipe gesture ref
   const touchStartX = useRef(null)
 
   const { data: recipe, isLoading } = useQuery({ queryKey: ['recipe', id], queryFn: () => api.get(`/recipes/${id}`).then(r => r.data) })
-  const { data: recipe, isLoading } = useQuery({
-    queryKey: ['cook-recipe', isGenerated ? `generated:${id}` : id],
-    queryFn: () => api.get(isGenerated ? `/recipes/generated/${id}` : `/recipes/${id}`).then(r => r.data),
-    initialData: routeRecipe,
-  })
 
   const logMutation = useMutation({
     mutationFn: (data) => api.post('/mealhistory', data).then(r => r.data),
@@ -53,7 +40,6 @@ export default function GuidedCooking() {
     onSuccess: () => { stopCooking(); navigate('/dashboard') }
   })
 
-  // Reset timer when step changes
   useEffect(() => {
     setTimerOpen(false)
     setTimerActive(false)
@@ -61,7 +47,6 @@ export default function GuidedCooking() {
     setTimerMinutes(5)
   }, [cookingStep])
 
-  // Timer countdown
   useEffect(() => {
     if (!timerActive) return
     const interval = setInterval(() => {
@@ -80,11 +65,10 @@ export default function GuidedCooking() {
   const totalSteps = Math.max(steps.length, 1)
   const currentStepData = steps[cookingStep]
   const progress = ((cookingStep + 1) / totalSteps) * 100
-  const recipeDetailPath = recipe?.isGenerated ? `/recipe/generated/${id}` : `/recipe/${id}`
 
   const handleNext = () => {
     if (cookingStep === totalSteps - 1) {
-      logMutation.mutate(recipe.isGenerated ? { recipeTitle: recipe.title } : { recipeId: recipe._id, recipeTitle: recipe.title })
+      logMutation.mutate({ recipeId: recipe._id, recipeTitle: recipe.title })
       setShowDone(true)
     } else {
       nextStep()
@@ -98,37 +82,26 @@ export default function GuidedCooking() {
     rateMutation.mutate({ histId: historyId, rating, feedback, notes })
   }
 
-  const startTimer = () => {
-    setTimerSeconds(timerMinutes * 60)
-    setTimerActive(true)
-  }
+  const startTimer = () => { setTimerSeconds(timerMinutes * 60); setTimerActive(true) }
 
-  const formatTimerDisplay = (secs) => {
-    const m = Math.floor(secs / 60).toString().padStart(2, '0')
-    const s = (secs % 60).toString().padStart(2, '0')
-    return `${m}:${s}`
-  }
+  const formatTimer = (secs) => `${Math.floor(secs / 60).toString().padStart(2, '0')}:${(secs % 60).toString().padStart(2, '0')}`
 
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX
-  }
-
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return
     const delta = touchStartX.current - e.changedTouches[0].clientX
     touchStartX.current = null
     if (Math.abs(delta) < 50) return
-    if (delta > 0) {
-      handleNext()
-    } else {
-      if (cookingStep > 0) { prevStep(); setShowTip(false); setShowWhy(false) }
-    }
+    if (delta > 0) handleNext()
+    else if (cookingStep > 0) { prevStep(); setShowTip(false); setShowWhy(false) }
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="px-4 py-3 flex items-center gap-3 border-b border-gray-800">
-        <button onClick={() => { stopCooking(); navigate(recipeDetailPath, { state: { recipe } }) }} className="p-2 text-gray-400 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={() => { stopCooking(); navigate(`/recipe/${id}`) }} className="p-2 text-gray-400 hover:text-white">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <div className="flex-1">
           <h1 className="font-bold truncate">{recipe.title}</h1>
           <p className="text-xs text-gray-400">Step {cookingStep + 1} of {totalSteps}</p>
@@ -148,11 +121,9 @@ export default function GuidedCooking() {
           <div className="text-6xl font-black text-gray-700 mb-4">{cookingStep + 1}</div>
           <p className="text-2xl font-medium leading-relaxed text-white mb-6">{currentStepData?.instruction}</p>
 
-          {/* Step Timer */}
           <div className="mb-4">
             {!timerOpen ? (
-              <button onClick={() => setTimerOpen(true)}
-                className="flex items-center gap-2 text-sm text-blue-300 font-medium hover:text-blue-200 transition-colors">
+              <button onClick={() => setTimerOpen(true)} className="flex items-center gap-2 text-sm text-blue-300 font-medium hover:text-blue-200 transition-colors">
                 ⏱️ Set Timer
               </button>
             ) : (
@@ -163,29 +134,19 @@ export default function GuidedCooking() {
                       <div className="text-2xl font-bold text-yellow-400 animate-pulse">⏰ Time's up!</div>
                     ) : (
                       <>
-                        <div className="text-5xl font-black text-white mb-3 font-mono tracking-widest">{formatTimerDisplay(timerSeconds)}</div>
-                        <button onClick={() => { setTimerActive(false); setTimerSeconds(0) }}
-                          className="text-sm text-gray-400 hover:text-white transition-colors">
-                          Cancel
-                        </button>
+                        <div className="text-5xl font-black text-white mb-3 font-mono tracking-widest">{formatTimer(timerSeconds)}</div>
+                        <button onClick={() => { setTimerActive(false); setTimerSeconds(0) }} className="text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
                       </>
                     )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <input
-                      type="number" min="1" max="60" value={timerMinutes}
+                    <input type="number" min="1" max="60" value={timerMinutes}
                       onChange={e => setTimerMinutes(Math.min(60, Math.max(1, Number(e.target.value))))}
-                      className="w-20 px-3 py-2 bg-gray-700 text-white rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                      className="w-20 px-3 py-2 bg-gray-700 text-white rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary" />
                     <span className="text-gray-400 text-sm">min</span>
-                    <button onClick={startTimer}
-                      className="flex-1 py-2 bg-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-colors">
-                      ▶ Start
-                    </button>
-                    <button onClick={() => setTimerOpen(false)} className="p-2 text-gray-400 hover:text-white transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
+                    <button onClick={startTimer} className="flex-1 py-2 bg-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-colors">▶ Start</button>
+                    <button onClick={() => setTimerOpen(false)} className="p-2 text-gray-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
                   </div>
                 )}
               </div>
@@ -194,10 +155,8 @@ export default function GuidedCooking() {
 
           {currentStepData?.whyItMatters && (
             <div className="mb-3">
-              <button onClick={() => setShowWhy(v => !v)}
-                className="flex items-center gap-2 text-sm text-orange-300 font-medium">
-                <HelpCircle className="w-4 h-4" />
-                {showWhy ? 'Hide' : 'Why does this matter?'}
+              <button onClick={() => setShowWhy(v => !v)} className="flex items-center gap-2 text-sm text-orange-300 font-medium">
+                <HelpCircle className="w-4 h-4" />{showWhy ? 'Hide' : 'Why does this matter?'}
               </button>
               {showWhy && <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">{currentStepData.whyItMatters}</p>}
             </div>
@@ -205,10 +164,8 @@ export default function GuidedCooking() {
 
           {user?.learningMode && currentStepData?.tip && (
             <div>
-              <button onClick={() => setShowTip(v => !v)}
-                className="flex items-center gap-2 text-sm text-yellow-300 font-medium">
-                <Lightbulb className="w-4 h-4" />
-                {showTip ? 'Hide' : '🎓 Pro Tip'}
+              <button onClick={() => setShowTip(v => !v)} className="flex items-center gap-2 text-sm text-yellow-300 font-medium">
+                <Lightbulb className="w-4 h-4" />{showTip ? 'Hide' : '🎓 Pro Tip'}
               </button>
               {showTip && <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">{currentStepData.tip}</p>}
             </div>

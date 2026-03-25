@@ -1,26 +1,15 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, AlertTriangle } from 'lucide-react'
-import { Zap, Trophy, Smile, Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, BarChart3, Book } from 'lucide-react'
+import { Package, ShoppingCart, User, LogOut, ChefHat, Star, Calendar, AlertTriangle } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 import useAppStore from '../store/useAppStore'
 
 const INTENTS = [
-  { id: 'quick',  title: '⚡ Quick & Easy',        sub: 'Under 20 minutes',          color: 'from-yellow-50 to-orange-50 border-orange-200' },
+  { id: 'quick',  title: '⚡ Quick & Easy',        sub: 'Under 20 minutes',             color: 'from-yellow-50 to-orange-50 border-orange-200' },
   { id: 'effort', title: '💪 I Will Put in Effort', sub: 'Let us make something special', color: 'from-blue-50 to-indigo-50 border-blue-200' },
-  { id: 'easy',   title: '😌 Something Easy',       sub: 'Low effort, big flavor',    color: 'from-green-50 to-emerald-50 border-green-200' },
-const TIME_OPTIONS = [
-  { id: 'short', title: '⏱️ Short', sub: 'Under 25 minutes', color: 'from-yellow-50 to-orange-50 border-orange-200' },
-  { id: 'medium', title: '� Medium', sub: '25 - 45 minutes', color: 'from-blue-50 to-indigo-50 border-blue-200' },
-  { id: 'long', title: '🍲 Long', sub: 'Over 45 minutes', color: 'from-green-50 to-emerald-50 border-green-200' },
-]
-
-const DIFFICULTY_OPTIONS = [
-  { id: 'easy', title: '😌 Easy', sub: 'Low effort', color: 'from-green-50 to-emerald-50 border-green-200' },
-  { id: 'medium', title: '🟡 Medium', sub: 'Some prep', color: 'from-yellow-50 to-amber-50 border-amber-200' },
-  { id: 'hard', title: '🔥 Hard', sub: 'Challenging & rewarding', color: 'from-red-50 to-rose-50 border-rose-200' },
+  { id: 'easy',   title: '�� Something Easy',       sub: 'Low effort, big flavor',       color: 'from-green-50 to-emerald-50 border-green-200' },
 ]
 
 const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
@@ -28,22 +17,11 @@ const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','
 function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-50">
-      <Link to="/dashboard" className="flex flex-col items-center gap-1 text-primary">
-        <ChefHat className="w-5 h-5" /><span className="text-xs">Home</span>
-      </Link>
-
-      <Link to="/pantry" className="flex flex-col items-center gap-1 text-gray-400">
-        <Package className="w-5 h-5" /><span className="text-xs">Pantry</span>
-      </Link>
-      <Link to="/planner" className="flex flex-col items-center gap-1 text-gray-400">
-        <Calendar className="w-5 h-5" /><span className="text-xs">Planner</span>
-      </Link>
-      <Link to="/shopping" className="flex flex-col items-center gap-1 text-gray-400">
-        <ShoppingCart className="w-5 h-5" /><span className="text-xs">Shopping</span>
-      </Link>
-      <Link to="/profile" className="flex flex-col items-center gap-1 text-gray-400">
-        <User className="w-5 h-5" /><span className="text-xs">Profile</span>
-      </Link>
+      <Link to="/dashboard" className="flex flex-col items-center gap-1 text-primary"><ChefHat className="w-5 h-5" /><span className="text-xs">Home</span></Link>
+      <Link to="/pantry"    className="flex flex-col items-center gap-1 text-gray-400"><Package className="w-5 h-5" /><span className="text-xs">Pantry</span></Link>
+      <Link to="/planner"   className="flex flex-col items-center gap-1 text-gray-400"><Calendar className="w-5 h-5" /><span className="text-xs">Planner</span></Link>
+      <Link to="/shopping"  className="flex flex-col items-center gap-1 text-gray-400"><ShoppingCart className="w-5 h-5" /><span className="text-xs">Shopping</span></Link>
+      <Link to="/profile"   className="flex flex-col items-center gap-1 text-gray-400"><User className="w-5 h-5" /><span className="text-xs">Profile</span></Link>
     </nav>
   )
 }
@@ -53,34 +31,23 @@ export default function Dashboard() {
   const user = useAuthStore(s => s.user)
   const logout = useAuthStore(s => s.logout)
   const setIntent = useAppStore(s => s.setIntent)
-  const [timeChoice, setTimeChoice] = useState(null)
-  const [diffChoice, setDiffChoice] = useState(null)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
   const todayKey = DAY_NAMES[new Date().getDay()]
 
-  const { data: pantryData } = useQuery({ queryKey: ['pantry'], queryFn: () => api.get('/pantry').then(r => r.data) })
-  const { data: historyData } = useQuery({ queryKey: ['mealHistory'], queryFn: () => api.get('/mealhistory').then(r => r.data) })
-  const { data: mealPlan } = useQuery({ queryKey: ['mealplan'], queryFn: () => api.get('/mealplan').then(r => r.data) })
+  const { data: pantryData }  = useQuery({ queryKey: ['pantry'],      queryFn: () => api.get('/pantry').then(r => r.data) })
+  const { data: historyData } = useQuery({ queryKey: ['mealHistory'],  queryFn: () => api.get('/mealhistory').then(r => r.data) })
+  const { data: mealPlan }    = useQuery({ queryKey: ['mealplan'],     queryFn: () => api.get('/mealplan').then(r => r.data) })
 
-  const pantryItems = pantryData?.items || []
-  const recentMeals = historyData?.slice(0, 3) || []
+  const pantryItems  = pantryData?.items || []
+  const recentMeals  = historyData?.slice(0, 3) || []
 
-  // Find items expiring within 2 days
   const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
   const expiringItems = pantryItems.filter(i => i.expiresAt && new Date(i.expiresAt) <= soon && new Date(i.expiresAt) >= new Date())
-
-  // Today's planned meal
   const todayPlan = mealPlan?.days?.[todayKey]
 
-  const handleIntent = (intentId) => {
-    setIntent(intentId)
-  const handleGoSuggest = () => {
-    // store an object with separate choices
-    setIntent({ time: timeChoice, difficulty: diffChoice })
-    navigate('/suggest')
-  }
+  const handleIntent = (intentId) => { setIntent(intentId); navigate('/suggest') }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -89,7 +56,6 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <ChefHat className="w-7 h-7 text-primary" />
             <span className="text-xl font-bold text-gray-900">CookSmart</span>
-            {/* children mode selected on mode page */}
           </div>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -103,38 +69,28 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 pt-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">
-          Good {greeting}, {user?.name?.split(' ')[0]}! 👋
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Good {greeting}, {user?.name?.split(' ')[0]}! 👋</h2>
         <p className="text-gray-500 mb-5">What are we cooking today?</p>
 
-        {/* Expiry alert banner */}
         {expiringItems.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">
-                {expiringItems.length} item{expiringItems.length > 1 ? 's' : ''} expiring soon!
-              </p>
-              <p className="text-sm text-amber-700 mt-0.5">
-                {expiringItems.map(i => i.name).join(', ')}
-              </p>
-              <button onClick={() => { setIntent('quick'); navigate('/suggest') }}
-                className="mt-2 text-xs font-semibold text-amber-700 underline">
+              <p className="text-sm font-semibold text-amber-800">{expiringItems.length} item{expiringItems.length > 1 ? 's' : ''} expiring soon!</p>
+              <p className="text-sm text-amber-700 mt-0.5">{expiringItems.map(i => i.name).join(', ')}</p>
+              <button onClick={() => { setIntent('quick'); navigate('/suggest') }} className="mt-2 text-xs font-semibold text-amber-700 underline">
                 Find recipes using these →
               </button>
             </div>
           </div>
         )}
 
-        {/* Today's meal plan */}
         {todayPlan?.recipeId && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-5 hover:shadow-md transition-all cursor-pointer"
             onClick={() => navigate(`/recipe/${todayPlan.recipeId}`)}>
             <div className="flex items-center gap-3 p-4">
               {todayPlan.imageUrl && (
-                <img src={todayPlan.imageUrl} alt={todayPlan.recipeTitle}
-                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                <img src={todayPlan.imageUrl} alt={todayPlan.recipeTitle} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
               )}
               <div className="flex-1">
                 <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-0.5">📅 Today's Plan</p>
@@ -145,86 +101,26 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Intent buttons */}
         <div className="grid gap-3 mb-6">
           {INTENTS.map(({ id, title, sub, color }) => (
             <button key={id} onClick={() => handleIntent(id)}
               className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-5 text-left hover:shadow-md transition-all active:scale-[0.98]`}>
               <div className="text-lg font-bold text-gray-900">{title}</div>
               <div className="text-sm text-gray-500 mt-1">{sub}</div>
-        <div className="grid gap-4 mb-4">
-          <h4 className="text-sm font-semibold text-gray-700">How much time do you have?</h4>
-          <div className="grid grid-cols-3 gap-3">
-            {TIME_OPTIONS.map(({ id, title, sub, color }) => (
-              <button key={id} onClick={() => setTimeChoice(id)}
-                className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.98] ${timeChoice === id ? 'ring-2 ring-primary' : ''}`}>
-                <div className="text-sm font-bold text-gray-900">{title}</div>
-                <div className="text-xs text-gray-500 mt-1">{sub}</div>
-              </button>
-            ))}
-          </div>
-
-          <h4 className="text-sm font-semibold text-gray-700 mt-4">Difficulty</h4>
-          <div className="grid grid-cols-3 gap-3">
-            {DIFFICULTY_OPTIONS.map(({ id, title, sub, color }) => (
-              <button key={id} onClick={() => setDiffChoice(id)}
-                className={`bg-gradient-to-r ${color} border-2 rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.98] ${diffChoice === id ? 'ring-2 ring-primary' : ''}`}>
-                <div className="text-sm font-bold text-gray-900">{title}</div>
-                <div className="text-xs text-gray-500 mt-1">{sub}</div>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4">
-            <button onClick={handleGoSuggest} disabled={!timeChoice && !diffChoice}
-              className="w-full bg-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors disabled:opacity-60">
-              🔍 Find Recipes
             </button>
-          </div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Link 
-            to="/meal-planner"
-            className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 hover:shadow-md transition"
-          >
-            <Calendar className="w-6 h-6 text-purple-600 mb-2" />
-            <div className="text-sm font-bold text-gray-800">Meal Planner</div>
-          </Link>
-          
-          <Link 
-            to="/analytics"
-            className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 hover:shadow-md transition"
-          >
-            <BarChart3 className="w-6 h-6 text-blue-600 mb-2" />
-            <div className="text-sm font-bold text-gray-800">Analytics</div>
-          </Link>
-          
-          <Link 
-            to="/learning"
-            className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 hover:shadow-md transition"
-          >
-            <Book className="w-6 h-6 text-green-600 mb-2" />
-            <div className="text-sm font-bold text-gray-800">Learning</div>
-          </Link>
-        </div>
-
-        {/* Pantry quick view */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary" /> Your Pantry
-            </h3>
+            <h3 className="font-bold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-primary" /> Your Pantry</h3>
             <Link to="/pantry" className="text-sm text-primary font-medium">Manage →</Link>
           </div>
           <p className="text-gray-500 text-sm">
-            {pantryItems.length > 0
-              ? `${pantryItems.length} ingredient${pantryItems.length !== 1 ? 's' : ''} available`
-              : 'No items yet. Add ingredients for better suggestions!'}
+            {pantryItems.length > 0 ? `${pantryItems.length} ingredient${pantryItems.length !== 1 ? 's' : ''} available` : 'No items yet. Add ingredients for better suggestions!'}
           </p>
         </div>
 
-        {/* Recent meals */}
         {recentMeals.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <h3 className="font-bold text-gray-900 mb-3">🍽️ Recent Meals</h3>

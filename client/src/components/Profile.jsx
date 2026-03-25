@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChefHat, Package, ShoppingCart, User, LogOut, ToggleLeft, ToggleRight, Save, Calendar } from 'lucide-react'
-import { ChefHat, Package, ShoppingCart, User, LogOut, ToggleLeft, ToggleRight, Save, Sparkles, Bot, Globe, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react'
 import api from '../services/api'
 import useAuthStore from '../store/useAuthStore'
 

@@ -12,10 +12,6 @@ import Pantry from './components/Pantry'
 import ShoppingList from './components/ShoppingList'
 import Profile from './components/Profile'
 import MealPlanner from './components/MealPlanner'
-import ModeSelect from './components/ModeSelect'
-import MealPlanner from './components/MealPlanner'
-import Analytics from './components/Analytics'
-import LearningCenter from './components/LearningCenter'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore(s => s.token)
@@ -40,23 +36,5 @@ export default function App() {
         <Route path="/planner" element={<ProtectedRoute><MealPlanner /></ProtectedRoute>} />
       </Routes>
     </ToastProvider>
-    <Routes>
-      <Route path="/" element={token ? <Navigate to="/mode" replace /> : <Navigate to="/login" replace />} />
-      <Route path="/login" element={<Auth />} />
-      <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-      <Route path="/mode" element={<ProtectedRoute><ModeSelect /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/suggest" element={<ProtectedRoute><RecipeSuggestions /></ProtectedRoute>} />
-      <Route path="/recipe/generated/:id" element={<ProtectedRoute><RecipeDetail /></ProtectedRoute>} />
-      <Route path="/recipe/:id" element={<ProtectedRoute><RecipeDetail /></ProtectedRoute>} />
-      <Route path="/cook/generated/:id" element={<ProtectedRoute><GuidedCooking /></ProtectedRoute>} />
-      <Route path="/cook/:id" element={<ProtectedRoute><GuidedCooking /></ProtectedRoute>} />
-      <Route path="/pantry" element={<ProtectedRoute><Pantry /></ProtectedRoute>} />
-      <Route path="/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/meal-planner" element={<ProtectedRoute><MealPlanner /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/learning" element={<ProtectedRoute><LearningCenter /></ProtectedRoute>} />
-    </Routes>
   )
 }
