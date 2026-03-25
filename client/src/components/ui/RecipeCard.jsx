@@ -57,7 +57,7 @@ export default function RecipeCard({
         <img
           src={recipe.imageUrl || getFallbackImg(recipe.title)}
           alt={recipe.title}
-          className="w-full h-44 object-cover"
+          className="w-full h-32 sm:h-44 object-cover"
           loading="lazy"
           referrerPolicy="no-referrer"
           crossOrigin="anonymous"
@@ -98,8 +98,8 @@ export default function RecipeCard({
         )}
       </div>
 
-      <div className="p-4">
-        <h4 className="font-bold text-gray-900 line-clamp-2 mb-2">
+      <div className="p-3 sm:p-4">
+        <h4 className="font-bold text-gray-900 line-clamp-2 mb-2 text-sm sm:text-base leading-tight">
           {recipe.title}
         </h4>
 

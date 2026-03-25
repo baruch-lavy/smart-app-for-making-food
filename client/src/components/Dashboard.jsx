@@ -14,6 +14,7 @@ import {
   Music,
   Sparkles,
   ArrowRight,
+  Compass,
 } from "lucide-react";
 import api from "../services/api";
 import useAuthStore from "../store/useAuthStore";
@@ -85,6 +86,17 @@ export default function Dashboard() {
   const { data: mealPlan } = useQuery({
     queryKey: ["mealplan"],
     queryFn: () => api.get("/mealplan").then((r) => r.data),
+  });
+  const { data: discoverRecipe } = useQuery({
+    queryKey: ["discover-recipe"],
+    queryFn: () =>
+      api.get("/recipes/search?q=popular").then((r) => {
+        const recipes = r.data || [];
+        return recipes.length
+          ? recipes[Math.floor(Math.random() * recipes.length)]
+          : null;
+      }),
+    staleTime: 1000 * 60 * 30,
   });
 
   const pantryItems = pantryData?.items || [];
@@ -179,6 +191,41 @@ export default function Dashboard() {
             </div>
           </div>
         </motion.div>
+
+        {/* Discover Recipe */}
+        {discoverRecipe && (
+          <motion.div
+            variants={item}
+            className="card overflow-hidden mb-5 cursor-pointer group"
+            onClick={() =>
+              navigate(`/recipe/${discoverRecipe._id || discoverRecipe.idMeal}`)
+            }
+          >
+            <div className="relative">
+              {(discoverRecipe.image || discoverRecipe.strMealThumb) && (
+                <img
+                  src={discoverRecipe.image || discoverRecipe.strMealThumb}
+                  alt={discoverRecipe.title || discoverRecipe.strMeal}
+                  className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <p className="text-[10px] font-bold text-orange-300 uppercase tracking-widest flex items-center gap-1 mb-1">
+                  <Compass className="w-3 h-3" /> Discover
+                </p>
+                <p className="font-bold text-white text-lg leading-tight line-clamp-1">
+                  {discoverRecipe.title || discoverRecipe.strMeal}
+                </p>
+                {discoverRecipe.cuisine && (
+                  <p className="text-xs text-white/70 mt-0.5">
+                    {discoverRecipe.cuisine}
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Expiring items alert */}
         {expiringItems.length > 0 && (

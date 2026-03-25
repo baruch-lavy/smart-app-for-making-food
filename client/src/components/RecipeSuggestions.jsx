@@ -211,8 +211,8 @@ export default function RecipeSuggestions() {
 
         {/* Search loading */}
         {searchMutation.isPending && (
-          <div className="grid grid-cols-1 gap-4 mb-4">
-            {[1, 2, 3].map((i) => (
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {[1, 2, 3, 4].map((i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
@@ -290,8 +290,8 @@ export default function RecipeSuggestions() {
             </button>
 
             {suggestMutation.isPending && (
-              <div className="grid grid-cols-1 gap-4">
-                {[1, 2, 3].map((i) => (
+              <div className="grid grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
                   <SkeletonCard key={i} />
                 ))}
               </div>
@@ -338,62 +338,66 @@ export default function RecipeSuggestions() {
         )}
 
         {displayList.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="font-bold text-gray-900">
+          <div>
+            <h3 className="font-bold text-gray-900 mb-3">
               {activeTab === "search"
                 ? `🌍 ${searchResults.length} results from the web`
                 : `✨ ${filteredSuggestions.length} Suggestions`}
             </h3>
-            {displayList.map((recipe) => {
-              const addResult = addedRecipes[recipe._id];
-              const isExternal =
-                !recipe._id && (recipe.spoonacularId || recipe.mealdbId);
-              return (
-                <div
-                  key={recipe._id || recipe.spoonacularId || recipe.mealdbId}
-                >
-                  <RecipeCard
-                    recipe={recipe}
-                    onFavorite={
-                      recipe._id
-                        ? (id) => favoriteMutation.mutate(id)
-                        : undefined
-                    }
-                    isFavorite={recipe._id ? favorites.has(recipe._id) : false}
-                    onImport={
-                      isExternal
-                        ? (id, isSpoonacular) =>
-                            importMutation.mutate({ id, isSpoonacular })
-                        : undefined
-                    }
-                    onClick={
-                      recipe._id
-                        ? () => navigate(`/recipe/${recipe._id}`)
-                        : undefined
-                    }
-                  />
-                  {recipe._id && (
-                    <div className="mt-1 px-1">
-                      {addResult ? (
-                        <p className="text-xs text-green-600 font-medium px-2">
-                          ✅ {addResult.added} items added to shopping list
-                        </p>
-                      ) : (
-                        <button
-                          onClick={() =>
-                            addToShoppingMutation.mutate(recipe._id)
-                          }
-                          disabled={addToShoppingMutation.isPending}
-                          className="text-xs text-gray-400 hover:text-primary px-2 py-1 transition-colors"
-                        >
-                          + Add ingredients to shopping list
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <div className="grid grid-cols-2 gap-3">
+              {displayList.map((recipe) => {
+                const addResult = addedRecipes[recipe._id];
+                const isExternal =
+                  !recipe._id && (recipe.spoonacularId || recipe.mealdbId);
+                return (
+                  <div
+                    key={recipe._id || recipe.spoonacularId || recipe.mealdbId}
+                  >
+                    <RecipeCard
+                      recipe={recipe}
+                      onFavorite={
+                        recipe._id
+                          ? (id) => favoriteMutation.mutate(id)
+                          : undefined
+                      }
+                      isFavorite={
+                        recipe._id ? favorites.has(recipe._id) : false
+                      }
+                      onImport={
+                        isExternal
+                          ? (id, isSpoonacular) =>
+                              importMutation.mutate({ id, isSpoonacular })
+                          : undefined
+                      }
+                      onClick={
+                        recipe._id
+                          ? () => navigate(`/recipe/${recipe._id}`)
+                          : undefined
+                      }
+                    />
+                    {recipe._id && (
+                      <div className="mt-1">
+                        {addResult ? (
+                          <p className="text-xs text-green-600 font-medium">
+                            ✅ {addResult.added} added
+                          </p>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              addToShoppingMutation.mutate(recipe._id)
+                            }
+                            disabled={addToShoppingMutation.isPending}
+                            className="text-xs text-gray-400 hover:text-primary py-1 transition-colors"
+                          >
+                            + Add to shopping list
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

@@ -68,3 +68,17 @@ body {
     @apply w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-200 bg-white;
   }
 }
+
+/* Hide scrollbar for filter rows */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth page transitions */
+[class*="min-h-screen"] {
+  min-height: 100dvh;
+}
