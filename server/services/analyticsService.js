@@ -151,8 +151,56 @@ const updateAnalytics = async (userId) => {
   return analytics;
 };
 
+// ⭐ Track user event
+const trackEvent = async (userId, type, metadata = {}) => {
+  return Analytics.create({
+    userId,
+    type,
+    metadata,
+    createdAt: new Date()
+  });
+};
+
+// ⭐ Save recipe feedback
+const saveRecipeFeedback = async ({
+  userId,
+  recipeId,
+  rating,
+  liked,
+  difficultyFelt
+}) => {
+  await trackEvent(userId, liked ? "recipe_like" : "recipe_dislike", {
+    recipeId,
+    rating,
+    difficultyFelt
+  });
+
+  return {
+    success: true
+  };
+};
+
+// ⭐ Build simple preference signals
+const getPreferenceSignals = async (userId) => {
+  const history = await MealHistory.find({ userId });
+
+  const likedMeals = history.filter(m => m.rating >= 4);
+  const dislikedMeals = history.filter(m => m.rating <= 2);
+
+  return {
+    likedRecipes: likedMeals.map(m => m.recipeId),
+    dislikedRecipes: dislikedMeals.map(m => m.recipeId),
+    averageRating:
+      history.length > 0
+        ? history.reduce((s, m) => s + (m.rating || 3), 0) / history.length
+        : null
+  };
+};
 module.exports = {
   predictRecipeSuccess,
   generateWeeklyInsight,
-  updateAnalytics
+  updateAnalytics,
+  trackEvent,
+  saveRecipeFeedback,
+  getPreferenceSignals
 };
