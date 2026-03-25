@@ -1,26 +1,47 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
 const useAppStore = create((set) => ({
-  currentView: 'dashboard',
+  currentView: "dashboard",
   selectedIntent: null,
   selectedIngredients: [],
   selectedRecipe: null,
   cookingStep: 0,
   cookingMode: false,
   childrenMode: false,
+
+  // Persisted recipe results (survive navigation)
+  recipeSuggestions: [],
+  recipeSearchResults: [],
+  recipeSearchQuery: "",
+  recipeActiveTab: "ai",
+  recipeSortBy: "recommended",
+  recipeFilters: { easyOnly: false, under30: false, hasImage: false },
+
   setView: (view) => set({ currentView: view }),
   setIntent: (intent) => set({ selectedIntent: intent }),
   setChildrenMode: (val) => set({ childrenMode: val }),
-  toggleIngredient: (ingredient) => set(state => ({
-    selectedIngredients: state.selectedIngredients.includes(ingredient)
-      ? state.selectedIngredients.filter(i => i !== ingredient)
-      : [...state.selectedIngredients, ingredient]
-  })),
+  toggleIngredient: (ingredient) =>
+    set((state) => ({
+      selectedIngredients: state.selectedIngredients.includes(ingredient)
+        ? state.selectedIngredients.filter((i) => i !== ingredient)
+        : [...state.selectedIngredients, ingredient],
+    })),
   setSelectedRecipe: (recipe) => set({ selectedRecipe: recipe }),
-  nextStep: () => set(state => ({ cookingStep: state.cookingStep + 1 })),
-  prevStep: () => set(state => ({ cookingStep: Math.max(0, state.cookingStep - 1) })),
+  nextStep: () => set((state) => ({ cookingStep: state.cookingStep + 1 })),
+  prevStep: () =>
+    set((state) => ({ cookingStep: Math.max(0, state.cookingStep - 1) })),
   startCooking: () => set({ cookingMode: true, cookingStep: 0 }),
-  stopCooking: () => set({ cookingMode: false, cookingStep: 0 })
-}))
+  stopCooking: () => set({ cookingMode: false, cookingStep: 0 }),
 
-export default useAppStore
+  setRecipeSuggestions: (v) => set({ recipeSuggestions: v }),
+  setRecipeSearchResults: (v) => set({ recipeSearchResults: v }),
+  setRecipeSearchQuery: (v) => set({ recipeSearchQuery: v }),
+  setRecipeActiveTab: (v) => set({ recipeActiveTab: v }),
+  setRecipeSortBy: (v) => set({ recipeSortBy: v }),
+  setRecipeFilters: (v) =>
+    set((state) => ({
+      recipeFilters: typeof v === "function" ? v(state.recipeFilters) : v,
+    })),
+}));
+
+export default useAppStore;

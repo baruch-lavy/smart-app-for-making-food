@@ -29,17 +29,20 @@ export default function RecipeSuggestions() {
   const selectedIngredients = useAppStore((s) => s.selectedIngredients);
   const toggleIngredient = useAppStore((s) => s.toggleIngredient);
 
+  const suggestions = useAppStore((s) => s.recipeSuggestions);
+  const setSuggestions = useAppStore((s) => s.setRecipeSuggestions);
+  const searchResults = useAppStore((s) => s.recipeSearchResults);
+  const setSearchResults = useAppStore((s) => s.setRecipeSearchResults);
+  const searchQuery = useAppStore((s) => s.recipeSearchQuery);
+  const setSearchQuery = useAppStore((s) => s.setRecipeSearchQuery);
+  const activeTab = useAppStore((s) => s.recipeActiveTab);
+  const setActiveTab = useAppStore((s) => s.setRecipeActiveTab);
+  const sortBy = useAppStore((s) => s.recipeSortBy);
+  const setSortBy = useAppStore((s) => s.setRecipeSortBy);
+  const filters = useAppStore((s) => s.recipeFilters);
+  const setFilters = useAppStore((s) => s.setRecipeFilters);
+
   const [customIngredient, setCustomIngredient] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [activeTab, setActiveTab] = useState("ai");
-  const [sortBy, setSortBy] = useState("recommended");
-  const [filters, setFilters] = useState({
-    easyOnly: false,
-    under30: false,
-    hasImage: false,
-  });
   const [addedRecipes, setAddedRecipes] = useState({});
   const [favorites, setFavorites] = useState(new Set());
 
