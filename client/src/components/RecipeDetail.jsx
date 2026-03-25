@@ -162,13 +162,19 @@ export default function RecipeDetail() {
         </div>
       </header>
 
-      {recipe.imageUrl && (
+      {recipe.imageUrl ? (
         <div className="max-w-2xl mx-auto">
           <img
             src={recipe.imageUrl}
             alt={recipe.title}
             className="w-full h-56 object-cover"
           />
+        </div>
+      ) : (
+        <div className="max-w-2xl mx-auto">
+          <div className="w-full h-56 bg-gradient-to-br from-orange-100 to-amber-50 flex items-center justify-center">
+            <ChefHat className="w-16 h-16 text-primary/30" />
+          </div>
         </div>
       )}
 

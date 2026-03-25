@@ -80,6 +80,7 @@ export default function Social() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState("challenges");
+  const [newTip, setNewTip] = useState("");
 
   const { data: challenges } = useQuery({
     queryKey: ["challenges"],
@@ -90,55 +91,47 @@ export default function Social() {
         .catch(() => []),
   });
 
+  const { data: communityTips = [] } = useQuery({
+    queryKey: ["community-tips"],
+    queryFn: () =>
+      api
+        .get("/social/community-tips")
+        .then((r) => r.data)
+        .catch(() => []),
+  });
+
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ["leaderboard"],
+    queryFn: () =>
+      api
+        .get("/social/leaderboard")
+        .then((r) => r.data)
+        .catch(() => []),
+  });
+
   const joinMutation = useMutation({
     mutationFn: (challengeId) =>
       api.post(`/social/challenges/${challengeId}/join`),
     onSuccess: () => qc.invalidateQueries(["challenges"]),
   });
 
+  const submitTipMutation = useMutation({
+    mutationFn: (tip) => api.post("/social/community-tips", { tip }),
+    onSuccess: () => {
+      qc.invalidateQueries(["community-tips"]);
+      setNewTip("");
+    },
+  });
+
+  const likeTipMutation = useMutation({
+    mutationFn: (tipId) => api.post(`/social/community-tips/${tipId}/like`),
+    onSuccess: () => qc.invalidateQueries(["community-tips"]),
+  });
+
   const tabs = [
     { id: "challenges", label: "Challenges", icon: Trophy },
     { id: "community", label: "Community", icon: Users },
     { id: "leaderboard", label: "Leaderboard", icon: TrendingUp },
-  ];
-
-  const sampleTips = [
-    {
-      id: 1,
-      author: "Chef Maria",
-      tip: "Always let your steak rest for 5 minutes after cooking. The juices redistribute and make it juicier!",
-      likes: 42,
-      emoji: "🥩",
-    },
-    {
-      id: 2,
-      author: "Jamie Home",
-      tip: "Add a pinch of sugar to your tomato sauce. It cuts the acidity and balances the flavor perfectly.",
-      likes: 38,
-      emoji: "🍅",
-    },
-    {
-      id: 3,
-      author: "Sarah K.",
-      tip: "Freeze leftover herbs in olive oil using ice cube trays. Perfect flavor bombs for future cooking!",
-      likes: 27,
-      emoji: "🌿",
-    },
-    {
-      id: 4,
-      author: "Mike Chen",
-      tip: "Toast your spices in a dry pan before using them. It brings out incredible depth of flavor.",
-      likes: 55,
-      emoji: "🌶️",
-    },
-  ];
-
-  const leaderboard = [
-    { rank: 1, name: "Chef Maria", meals: 145, streak: 32, badge: "🏆" },
-    { rank: 2, name: "Jamie Home", meals: 128, streak: 28, badge: "🥈" },
-    { rank: 3, name: "Sarah K.", meals: 112, streak: 21, badge: "🥉" },
-    { rank: 4, name: "Mike Chen", meals: 98, streak: 15, badge: "4" },
-    { rank: 5, name: "You", meals: 0, streak: 0, badge: "⭐" },
   ];
 
   return (
@@ -314,22 +307,51 @@ export default function Social() {
                 </p>
               </motion.div>
 
-              {sampleTips.map((tip) => (
-                <motion.div key={tip.id} variants={item} className="card p-5">
+              <motion.div variants={item} className="card p-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Share a cooking tip..."
+                    value={newTip}
+                    onChange={(e) => setNewTip(e.target.value)}
+                    className="input-field flex-1 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newTip.trim())
+                        submitTipMutation.mutate(newTip.trim());
+                    }}
+                  />
+                  <button
+                    onClick={() =>
+                      newTip.trim() && submitTipMutation.mutate(newTip.trim())
+                    }
+                    disabled={!newTip.trim() || submitTipMutation.isPending}
+                    className="btn-primary px-4 text-sm disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+
+              {communityTips.map((tip) => (
+                <motion.div key={tip._id} variants={item} className="card p-5">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-xl flex-shrink-0">
-                      {tip.emoji}
+                      {tip.emoji || "💡"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900">
-                        {tip.author}
+                        {tip.author || tip.userName || "Anonymous"}
                       </p>
                       <p className="text-sm text-gray-600 mt-1 leading-relaxed">
                         {tip.tip}
                       </p>
                       <div className="flex items-center gap-4 mt-3">
-                        <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors">
-                          <Heart className="w-3.5 h-3.5" /> {tip.likes}
+                        <button
+                          onClick={() => likeTipMutation.mutate(tip._id)}
+                          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Heart className="w-3.5 h-3.5" />{" "}
+                          {tip.likes || tip.votes || 0}
                         </button>
                         <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary transition-colors">
                           <MessageCircle className="w-3.5 h-3.5" /> Reply
@@ -366,7 +388,7 @@ export default function Social() {
                 <motion.div
                   key={entry.rank}
                   variants={item}
-                  className={`card p-4 flex items-center gap-4 ${entry.name === "You" ? "border-primary/30 bg-orange-50/50" : ""}`}
+                  className={`card p-4 flex items-center gap-4 ${entry.isCurrentUser || entry.name === "You" ? "border-primary/30 bg-orange-50/50" : ""}`}
                 >
                   <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold flex-shrink-0">
                     {typeof entry.badge === "string" &&
@@ -378,7 +400,7 @@ export default function Social() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`font-semibold text-sm ${entry.name === "You" ? "text-primary" : "text-gray-900"}`}
+                      className={`font-semibold text-sm ${entry.isCurrentUser || entry.name === "You" ? "text-primary" : "text-gray-900"}`}
                     >
                       {entry.name}
                     </p>

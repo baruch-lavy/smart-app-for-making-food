@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import useAppStore from "../store/useAppStore";
+import api from "../services/api";
 
 export default function ModeSelect() {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ export default function ModeSelect() {
 
   const choose = (withKids) => {
     setChildrenMode(!!withKids);
+    api.put("/users/profile", { childrenMode: !!withKids }).catch(() => {});
     navigate("/dashboard");
   };
 

@@ -17,6 +17,7 @@ import Analytics from "./components/Analytics";
 import LearningCenter from "./components/LearningCenter";
 import Social from "./components/Social";
 import Experience from "./components/Experience";
+import MiniPlayer from "./components/ui/MiniPlayer";
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore((s) => s.token);
@@ -152,6 +153,7 @@ export default function App() {
           }
         />
       </Routes>
+      <MiniPlayer />
     </ToastProvider>
   );
 }

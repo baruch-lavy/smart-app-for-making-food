@@ -11,9 +11,11 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 import BottomNav from "./ui/BottomNav";
+import { useToast } from "./ui/Toast";
 
 const LearningCenter = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [techniques, setTechniques] = useState([]);
   const [learningPath, setLearningPath] = useState(null);
   const [selectedTechnique, setSelectedTechnique] = useState(null);
@@ -49,7 +51,7 @@ const LearningCenter = () => {
         techniqueName,
       });
       fetchLearningPath();
-      alert(`✅ Technique "${techniqueName}" marked as practiced!`);
+      addToast(`✅ Technique "${techniqueName}" marked as practiced!`);
     } catch (error) {
       console.error("Error completing technique:", error);
     }
