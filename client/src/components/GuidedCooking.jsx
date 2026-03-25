@@ -1,115 +1,273 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { ArrowLeft, ChevronLeft, ChevronRight, Lightbulb, HelpCircle, Star, X } from 'lucide-react'
-import api from '../services/api'
-import useAuthStore from '../store/useAuthStore'
-import useAppStore from '../store/useAppStore'
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Lightbulb,
+  HelpCircle,
+  Star,
+  X,
+  UtensilsCrossed,
+  CheckSquare,
+  Square,
+} from "lucide-react";
+import api from "../services/api";
+import useAuthStore from "../store/useAuthStore";
+import useAppStore from "../store/useAppStore";
+
+const STEP_PHOTOS = [
+  {
+    keywords: ["chop", "cut", "dice", "slice", "mince", "julienne", "peel"],
+    emoji: "🔪",
+    bg: "from-red-900/40 to-orange-900/30",
+    label: "Prep",
+  },
+  {
+    keywords: ["boil", "simmer", "blanch", "poach", "steam", "water"],
+    emoji: "♨️",
+    bg: "from-blue-900/40 to-cyan-900/30",
+    label: "Boil",
+  },
+  {
+    keywords: ["fry", "sauté", "saute", "sear", "pan", "oil", "brown", "crisp"],
+    emoji: "🍳",
+    bg: "from-yellow-900/40 to-amber-900/30",
+    label: "Fry",
+  },
+  {
+    keywords: ["bake", "oven", "roast", "broil", "preheat"],
+    emoji: "🫕",
+    bg: "from-orange-900/40 to-red-900/30",
+    label: "Bake",
+  },
+  {
+    keywords: ["mix", "stir", "whisk", "combine", "fold", "blend", "beat"],
+    emoji: "🥄",
+    bg: "from-purple-900/40 to-pink-900/30",
+    label: "Mix",
+  },
+  {
+    keywords: ["season", "salt", "pepper", "spice", "herb", "garlic", "flavor"],
+    emoji: "🧂",
+    bg: "from-emerald-900/40 to-teal-900/30",
+    label: "Season",
+  },
+  {
+    keywords: [
+      "serve",
+      "plate",
+      "garnish",
+      "arrange",
+      "top",
+      "drizzle",
+      "finish",
+    ],
+    emoji: "🍽️",
+    bg: "from-indigo-900/40 to-violet-900/30",
+    label: "Serve",
+  },
+  {
+    keywords: ["knead", "dough", "roll", "shape", "form", "flatten"],
+    emoji: "🫗",
+    bg: "from-amber-900/40 to-yellow-900/30",
+    label: "Dough",
+  },
+  {
+    keywords: [
+      "marinate",
+      "soak",
+      "rest",
+      "cool",
+      "chill",
+      "refrigerat",
+      "set aside",
+    ],
+    emoji: "🧊",
+    bg: "from-sky-900/40 to-blue-900/30",
+    label: "Rest",
+  },
+  {
+    keywords: ["grill", "bbq", "barbecue", "char", "smoke"],
+    emoji: "🔥",
+    bg: "from-red-900/50 to-orange-900/40",
+    label: "Grill",
+  },
+];
+
+function getStepTheme(instruction) {
+  const text = (instruction || "").toLowerCase();
+  for (const theme of STEP_PHOTOS) {
+    if (theme.keywords.some((k) => text.includes(k))) return theme;
+  }
+  return { emoji: "👨‍🍳", bg: "from-gray-800/60 to-gray-700/40", label: "Cook" };
+}
+
+function StepIllustration({ step, index }) {
+  const theme = getStepTheme(step.instruction);
+  return (
+    <div
+      className={`mb-4 rounded-2xl overflow-hidden bg-gradient-to-br ${theme.bg} border border-white/5 p-6 flex items-center gap-5`}
+    >
+      <span className="text-5xl">{theme.emoji}</span>
+      <div>
+        <span className="text-xs uppercase tracking-widest text-gray-400 font-semibold">
+          {theme.label}
+        </span>
+        <p className="text-sm text-gray-300 mt-1 line-clamp-2">
+          {step.instruction?.slice(0, 80)}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function GuidedCooking() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const user = useAuthStore(s => s.user)
-  const cookingStep = useAppStore(s => s.cookingStep)
-  const nextStep = useAppStore(s => s.nextStep)
-  const prevStep = useAppStore(s => s.prevStep)
-  const stopCooking = useAppStore(s => s.stopCooking)
-  const [showTip, setShowTip] = useState(false)
-  const [showWhy, setShowWhy] = useState(false)
-  const [showDone, setShowDone] = useState(false)
-  const [rating, setRating] = useState(0)
-  const [feedback, setFeedback] = useState('')
-  const [notes, setNotes] = useState('')
-  const [historyId, setHistoryId] = useState(null)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const cookingStep = useAppStore((s) => s.cookingStep);
+  const nextStep = useAppStore((s) => s.nextStep);
+  const prevStep = useAppStore((s) => s.prevStep);
+  const stopCooking = useAppStore((s) => s.stopCooking);
+  const [showTip, setShowTip] = useState(false);
+  const [showWhy, setShowWhy] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [notes, setNotes] = useState("");
+  const [historyId, setHistoryId] = useState(null);
 
-  const [timerOpen, setTimerOpen] = useState(false)
-  const [timerMinutes, setTimerMinutes] = useState(5)
-  const [timerActive, setTimerActive] = useState(false)
-  const [timerSeconds, setTimerSeconds] = useState(0)
-  const touchStartX = useRef(null)
+  const [timerOpen, setTimerOpen] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(5);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [checkedIngredients, setCheckedIngredients] = useState(new Set());
+  const [showIngredients, setShowIngredients] = useState(false);
+  const touchStartX = useRef(null);
 
-  const { data: recipe, isLoading } = useQuery({ queryKey: ['recipe', id], queryFn: () => api.get(`/recipes/${id}`).then(r => r.data) })
+  const { data: recipe, isLoading } = useQuery({
+    queryKey: ["recipe", id],
+    queryFn: () => api.get(`/recipes/${id}`).then((r) => r.data),
+  });
 
   const logMutation = useMutation({
-    mutationFn: (data) => api.post('/mealhistory', data).then(r => r.data),
-    onSuccess: (data) => setHistoryId(data._id)
-  })
+    mutationFn: (data) => api.post("/mealhistory", data).then((r) => r.data),
+    onSuccess: (data) => setHistoryId(data._id),
+  });
 
   const rateMutation = useMutation({
-    mutationFn: ({ histId, ...data }) => api.put(`/mealhistory/${histId}/rate`, data),
-    onSuccess: () => { stopCooking(); navigate('/dashboard') }
-  })
+    mutationFn: ({ histId, ...data }) =>
+      api.put(`/mealhistory/${histId}/rate`, data),
+    onSuccess: () => {
+      stopCooking();
+      navigate("/dashboard");
+    },
+  });
 
   useEffect(() => {
-    setTimerOpen(false)
-    setTimerActive(false)
-    setTimerSeconds(0)
-    setTimerMinutes(5)
-  }, [cookingStep])
+    setTimerOpen(false);
+    setTimerActive(false);
+    setTimerSeconds(0);
+    setTimerMinutes(5);
+  }, [cookingStep]);
 
   useEffect(() => {
-    if (!timerActive) return
+    if (!timerActive) return;
     const interval = setInterval(() => {
-      setTimerSeconds(s => {
-        if (s <= 1) { clearInterval(interval); setTimerActive(false); return 0 }
-        return s - 1
-      })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [timerActive])
+      setTimerSeconds((s) => {
+        if (s <= 1) {
+          clearInterval(interval);
+          setTimerActive(false);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerActive]);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
-  if (!recipe) return null
+  if (isLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-400">
+        Loading...
+      </div>
+    );
+  if (!recipe) return null;
 
-  const steps = recipe.steps || []
-  const totalSteps = Math.max(steps.length, 1)
-  const currentStepData = steps[cookingStep]
-  const progress = ((cookingStep + 1) / totalSteps) * 100
+  const steps = recipe.steps || [];
+  const totalSteps = Math.max(steps.length, 1);
+  const currentStepData = steps[cookingStep];
+  const progress = ((cookingStep + 1) / totalSteps) * 100;
 
   const handleNext = () => {
     if (cookingStep === totalSteps - 1) {
-      logMutation.mutate({ recipeId: recipe._id, recipeTitle: recipe.title })
-      setShowDone(true)
+      logMutation.mutate({ recipeId: recipe._id, recipeTitle: recipe.title });
+      setShowDone(true);
     } else {
-      nextStep()
-      setShowTip(false)
-      setShowWhy(false)
+      nextStep();
+      setShowTip(false);
+      setShowWhy(false);
     }
-  }
+  };
 
   const handleSubmitRating = () => {
-    if (!historyId) return
-    rateMutation.mutate({ histId: historyId, rating, feedback, notes })
-  }
+    if (!historyId) return;
+    rateMutation.mutate({ histId: historyId, rating, feedback, notes });
+  };
 
-  const startTimer = () => { setTimerSeconds(timerMinutes * 60); setTimerActive(true) }
+  const startTimer = () => {
+    setTimerSeconds(timerMinutes * 60);
+    setTimerActive(true);
+  };
 
-  const formatTimer = (secs) => `${Math.floor(secs / 60).toString().padStart(2, '0')}:${(secs % 60).toString().padStart(2, '0')}`
+  const formatTimer = (secs) =>
+    `${Math.floor(secs / 60)
+      .toString()
+      .padStart(2, "0")}:${(secs % 60).toString().padStart(2, "0")}`;
 
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
   const handleTouchEnd = (e) => {
-    if (touchStartX.current === null) return
-    const delta = touchStartX.current - e.changedTouches[0].clientX
-    touchStartX.current = null
-    if (Math.abs(delta) < 50) return
-    if (delta > 0) handleNext()
-    else if (cookingStep > 0) { prevStep(); setShowTip(false); setShowWhy(false) }
-  }
+    if (touchStartX.current === null) return;
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 50) return;
+    if (delta > 0) handleNext();
+    else if (cookingStep > 0) {
+      prevStep();
+      setShowTip(false);
+      setShowWhy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="px-4 py-3 flex items-center gap-3 border-b border-gray-800">
-        <button onClick={() => { stopCooking(); navigate(`/recipe/${id}`) }} className="p-2 text-gray-400 hover:text-white">
+        <button
+          onClick={() => {
+            stopCooking();
+            navigate(`/recipe/${id}`);
+          }}
+          className="p-2 text-gray-400 hover:text-white"
+        >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
           <h1 className="font-bold truncate">{recipe.title}</h1>
-          <p className="text-xs text-gray-400">Step {cookingStep + 1} of {totalSteps}</p>
+          <p className="text-xs text-gray-400">
+            Step {cookingStep + 1} of {totalSteps}
+          </p>
         </div>
       </header>
 
       <div className="h-1.5 bg-gray-800">
-        <div className="h-full bg-primary transition-all duration-300 rounded-r-full" style={{ width: `${progress}%` }} />
+        <div
+          className="h-full bg-primary transition-all duration-300 rounded-r-full"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       <div
@@ -118,12 +276,117 @@ export default function GuidedCooking() {
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex-1">
-          <div className="text-6xl font-black text-gray-700 mb-4">{cookingStep + 1}</div>
-          <p className="text-2xl font-medium leading-relaxed text-white mb-6">{currentStepData?.instruction}</p>
+          {/* Step illustration */}
+          {currentStepData && (
+            <StepIllustration step={currentStepData} index={cookingStep} />
+          )}
+
+          <div className="flex items-baseline gap-3 mb-4">
+            <div className="text-5xl font-black text-gray-700">
+              {cookingStep + 1}
+            </div>
+            {currentStepData?.estimatedTime > 0 && (
+              <span className="text-sm text-gray-400">
+                ~{currentStepData.estimatedTime} min
+              </span>
+            )}
+            {currentStepData?.difficultyLevel && (
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  currentStepData.difficultyLevel === "easy"
+                    ? "bg-green-900/50 text-green-300"
+                    : currentStepData.difficultyLevel === "hard"
+                      ? "bg-red-900/50 text-red-300"
+                      : "bg-yellow-900/50 text-yellow-300"
+                }`}
+              >
+                {currentStepData.difficultyLevel}
+              </span>
+            )}
+          </div>
+
+          <p className="text-2xl font-medium leading-relaxed text-white mb-4">
+            {currentStepData?.instruction}
+          </p>
+
+          {/* Sensory indicators */}
+          {currentStepData?.sensoryIndicators &&
+            Object.values(currentStepData.sensoryIndicators).some(Boolean) && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {currentStepData.sensoryIndicators.visual && (
+                  <span className="text-xs bg-gray-800 rounded-full px-3 py-1 text-blue-300">
+                    👁️ {currentStepData.sensoryIndicators.visual}
+                  </span>
+                )}
+                {currentStepData.sensoryIndicators.smell && (
+                  <span className="text-xs bg-gray-800 rounded-full px-3 py-1 text-green-300">
+                    👃 {currentStepData.sensoryIndicators.smell}
+                  </span>
+                )}
+                {currentStepData.sensoryIndicators.sound && (
+                  <span className="text-xs bg-gray-800 rounded-full px-3 py-1 text-purple-300">
+                    👂 {currentStepData.sensoryIndicators.sound}
+                  </span>
+                )}
+                {currentStepData.sensoryIndicators.texture && (
+                  <span className="text-xs bg-gray-800 rounded-full px-3 py-1 text-orange-300">
+                    🤚 {currentStepData.sensoryIndicators.texture}
+                  </span>
+                )}
+              </div>
+            )}
+
+          {/* Ingredients checklist toggle */}
+          {recipe.ingredients?.length > 0 && (
+            <div className="mb-4">
+              <button
+                onClick={() => setShowIngredients((v) => !v)}
+                className="flex items-center gap-2 text-sm text-emerald-300 font-medium hover:text-emerald-200 transition-colors"
+              >
+                <UtensilsCrossed className="w-4 h-4" />{" "}
+                {showIngredients ? "Hide" : "Show"} Ingredients (
+                {checkedIngredients.size}/{recipe.ingredients.length})
+              </button>
+              {showIngredients && (
+                <div className="mt-2 bg-gray-800 rounded-2xl p-4 max-h-48 overflow-y-auto space-y-2">
+                  {recipe.ingredients.map((ing, i) => {
+                    const checked = checkedIngredients.has(i);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() =>
+                          setCheckedIngredients((prev) => {
+                            const next = new Set(prev);
+                            checked ? next.delete(i) : next.add(i);
+                            return next;
+                          })
+                        }
+                        className="flex items-center gap-2 w-full text-left"
+                      >
+                        {checked ? (
+                          <CheckSquare className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        )}
+                        <span
+                          className={`text-sm ${checked ? "text-gray-500 line-through" : "text-gray-200"}`}
+                        >
+                          {ing.amount} {ing.unit} {ing.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mb-4">
             {!timerOpen ? (
-              <button onClick={() => setTimerOpen(true)} className="flex items-center gap-2 text-sm text-blue-300 font-medium hover:text-blue-200 transition-colors">
+              <button
+                onClick={() => setTimerOpen(true)}
+                className="flex items-center gap-2 text-sm text-blue-300 font-medium hover:text-blue-200 transition-colors"
+              >
                 ⏱️ Set Timer
               </button>
             ) : (
@@ -131,22 +394,53 @@ export default function GuidedCooking() {
                 {timerActive || timerSeconds > 0 ? (
                   <div className="text-center">
                     {timerSeconds === 0 ? (
-                      <div className="text-2xl font-bold text-yellow-400 animate-pulse">⏰ Time's up!</div>
+                      <div className="text-2xl font-bold text-yellow-400 animate-pulse">
+                        ⏰ Time's up!
+                      </div>
                     ) : (
                       <>
-                        <div className="text-5xl font-black text-white mb-3 font-mono tracking-widest">{formatTimer(timerSeconds)}</div>
-                        <button onClick={() => { setTimerActive(false); setTimerSeconds(0) }} className="text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
+                        <div className="text-5xl font-black text-white mb-3 font-mono tracking-widest">
+                          {formatTimer(timerSeconds)}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setTimerActive(false);
+                            setTimerSeconds(0);
+                          }}
+                          className="text-sm text-gray-400 hover:text-white transition-colors"
+                        >
+                          Cancel
+                        </button>
                       </>
                     )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <input type="number" min="1" max="60" value={timerMinutes}
-                      onChange={e => setTimerMinutes(Math.min(60, Math.max(1, Number(e.target.value))))}
-                      className="w-20 px-3 py-2 bg-gray-700 text-white rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={timerMinutes}
+                      onChange={(e) =>
+                        setTimerMinutes(
+                          Math.min(60, Math.max(1, Number(e.target.value))),
+                        )
+                      }
+                      className="w-20 px-3 py-2 bg-gray-700 text-white rounded-xl text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
                     <span className="text-gray-400 text-sm">min</span>
-                    <button onClick={startTimer} className="flex-1 py-2 bg-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-colors">▶ Start</button>
-                    <button onClick={() => setTimerOpen(false)} className="p-2 text-gray-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+                    <button
+                      onClick={startTimer}
+                      className="flex-1 py-2 bg-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-colors"
+                    >
+                      ▶ Start
+                    </button>
+                    <button
+                      onClick={() => setTimerOpen(false)}
+                      className="p-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -155,31 +449,62 @@ export default function GuidedCooking() {
 
           {currentStepData?.whyItMatters && (
             <div className="mb-3">
-              <button onClick={() => setShowWhy(v => !v)} className="flex items-center gap-2 text-sm text-orange-300 font-medium">
-                <HelpCircle className="w-4 h-4" />{showWhy ? 'Hide' : 'Why does this matter?'}
+              <button
+                onClick={() => setShowWhy((v) => !v)}
+                className="flex items-center gap-2 text-sm text-orange-300 font-medium"
+              >
+                <HelpCircle className="w-4 h-4" />
+                {showWhy ? "Hide" : "Why does this matter?"}
               </button>
-              {showWhy && <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">{currentStepData.whyItMatters}</p>}
+              {showWhy && (
+                <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">
+                  {currentStepData.whyItMatters}
+                </p>
+              )}
             </div>
           )}
 
           {user?.learningMode && currentStepData?.tip && (
             <div>
-              <button onClick={() => setShowTip(v => !v)} className="flex items-center gap-2 text-sm text-yellow-300 font-medium">
-                <Lightbulb className="w-4 h-4" />{showTip ? 'Hide' : '🎓 Pro Tip'}
+              <button
+                onClick={() => setShowTip((v) => !v)}
+                className="flex items-center gap-2 text-sm text-yellow-300 font-medium"
+              >
+                <Lightbulb className="w-4 h-4" />
+                {showTip ? "Hide" : "🎓 Pro Tip"}
               </button>
-              {showTip && <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">{currentStepData.tip}</p>}
+              {showTip && (
+                <p className="mt-2 text-sm text-gray-300 bg-gray-800 rounded-xl p-4 leading-relaxed">
+                  {currentStepData.tip}
+                </p>
+              )}
             </div>
           )}
         </div>
 
         <div className="flex gap-4 mt-8">
-          <button onClick={() => { prevStep(); setShowTip(false); setShowWhy(false) }} disabled={cookingStep === 0}
-            className="flex items-center gap-2 px-6 py-4 bg-gray-800 rounded-2xl font-semibold disabled:opacity-30 hover:bg-gray-700 transition-colors">
+          <button
+            onClick={() => {
+              prevStep();
+              setShowTip(false);
+              setShowWhy(false);
+            }}
+            disabled={cookingStep === 0}
+            className="flex items-center gap-2 px-6 py-4 bg-gray-800 rounded-2xl font-semibold disabled:opacity-30 hover:bg-gray-700 transition-colors"
+          >
             <ChevronLeft className="w-5 h-5" /> Prev
           </button>
-          <button onClick={handleNext}
-            className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-semibold hover:bg-primary-dark transition-colors text-lg">
-            {cookingStep === totalSteps - 1 ? '✅ Done Cooking!' : <>Next <ChevronRight className="w-5 h-5" /></>}
+          <button
+            onClick={handleNext}
+            className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary rounded-2xl font-semibold hover:bg-primary-dark transition-colors text-lg"
+          >
+            {cookingStep === totalSteps - 1 ? (
+              "✅ Done Cooking!"
+            ) : (
+              <>
+                Next <ChevronRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -189,33 +514,57 @@ export default function GuidedCooking() {
           <div className="bg-white rounded-t-3xl w-full p-6 text-gray-900">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">🎉 Great work!</h2>
-              <button onClick={() => { stopCooking(); navigate('/dashboard') }}><X className="w-5 h-5 text-gray-400" /></button>
+              <button
+                onClick={() => {
+                  stopCooking();
+                  navigate("/dashboard");
+                }}
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
             </div>
             <p className="text-gray-500 mb-4">How did it turn out?</p>
             <div className="flex justify-center gap-2 mb-5">
-              {[1, 2, 3, 4, 5].map(n => (
+              {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} onClick={() => setRating(n)}>
-                  <Star className={`w-9 h-9 ${n <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                  <Star
+                    className={`w-9 h-9 ${n <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`}
+                  />
                 </button>
               ))}
             </div>
             <div className="flex gap-2 mb-4">
-              {[['loved', '❤️ Loved it'], ['ok', '👍 It was OK'], ['disliked', '👎 Didnt like']].map(([val, label]) => (
-                <button key={val} onClick={() => setFeedback(val)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium border-2 transition-all ${feedback === val ? 'border-primary bg-orange-50 text-primary' : 'border-gray-200 text-gray-600'}`}>
+              {[
+                ["loved", "❤️ Loved it"],
+                ["ok", "👍 It was OK"],
+                ["disliked", "👎 Didnt like"],
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setFeedback(val)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border-2 transition-all ${feedback === val ? "border-primary bg-orange-50 text-primary" : "border-gray-200 text-gray-600"}`}
+                >
                   {label}
                 </button>
               ))}
             </div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes? (optional)"
-              className="w-full p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-primary mb-4" rows={2} />
-            <button onClick={handleSubmitRating} disabled={!rating || !feedback || rateMutation.isPending}
-              className="w-full py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-60 hover:bg-primary-dark transition-colors">
-              {rateMutation.isPending ? 'Saving...' : 'Save & Finish'}
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any notes? (optional)"
+              className="w-full p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-primary mb-4"
+              rows={2}
+            />
+            <button
+              onClick={handleSubmitRating}
+              disabled={!rating || !feedback || rateMutation.isPending}
+              className="w-full py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-60 hover:bg-primary-dark transition-colors"
+            >
+              {rateMutation.isPending ? "Saving..." : "Save & Finish"}
             </button>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

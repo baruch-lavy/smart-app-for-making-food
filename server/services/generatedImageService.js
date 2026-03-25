@@ -16,7 +16,10 @@ function buildPollinationsUrl(prompt, options = {}) {
 }
 
 function getGeneratedImageUrl(prompt, options = {}) {
-  if (process.env.AI_IMAGE_PROVIDER === "disabled") {
+  if (
+    process.env.AI_IMAGE_PROVIDER === "disabled" ||
+    process.env.AI_IMAGE_PROVIDER === "svg"
+  ) {
     return buildSvgFallback(prompt);
   }
 

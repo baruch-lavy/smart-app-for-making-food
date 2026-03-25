@@ -18,6 +18,7 @@ router.get("/profile", auth, async (req, res) => {
 router.put("/profile", auth, async (req, res) => {
   try {
     const allowed = [
+      "name",
       "tastePreferences",
       "dislikes",
       "dietaryRestrictions",

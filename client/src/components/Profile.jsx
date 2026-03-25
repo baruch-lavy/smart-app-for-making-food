@@ -49,6 +49,18 @@ const DISLIKES_LIST = [
   "Red Meat",
   "Eggs",
 ];
+const ALLERGIES = [
+  "Peanuts",
+  "Tree Nuts",
+  "Milk",
+  "Eggs",
+  "Wheat",
+  "Soy",
+  "Fish",
+  "Shellfish",
+  "Sesame",
+];
+const COOKING_LEVELS = ["beginner", "intermediate", "advanced"];
 const LEVEL_COLOR = {
   beginner: "bg-green-100 text-green-700",
   intermediate: "bg-orange-100 text-orange-700",
@@ -91,16 +103,24 @@ export default function Profile() {
   });
 
   const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editLevel, setEditLevel] = useState("beginner");
   const [tastes, setTastes] = useState([]);
   const [dietary, setDietary] = useState([]);
   const [dislikes, setDislikes] = useState([]);
+  const [allergies, setAllergies] = useState([]);
+  const [childrenMode, setChildrenMode] = useState(false);
   const [saved, setSaved] = useState(false);
 
   React.useEffect(() => {
     if (profile) {
+      setEditName(profile.name || "");
+      setEditLevel(profile.cookingLevel || "beginner");
       setTastes(profile.tastePreferences || []);
       setDietary(profile.dietaryRestrictions || []);
       setDislikes(profile.dislikes || []);
+      setAllergies(profile.allergies || []);
+      setChildrenMode(profile.childrenMode || false);
     }
   }, [profile]);
 
@@ -427,9 +447,13 @@ export default function Profile() {
               <button
                 onClick={() =>
                   updateMutation.mutate({
+                    name: editName.trim() || profile?.name,
+                    cookingLevel: editLevel,
                     tastePreferences: tastes,
                     dietaryRestrictions: dietary,
                     dislikes,
+                    allergies,
+                    childrenMode,
                   })
                 }
                 disabled={updateMutation.isPending}
@@ -445,6 +469,49 @@ export default function Profile() {
           )}
 
           <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">Name</p>
+              {editing ? (
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary"
+                />
+              ) : (
+                <p className="text-sm text-gray-600">{profile?.name}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                Cooking Level
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {COOKING_LEVELS.map((lvl) => (
+                  <Chip
+                    key={lvl}
+                    label={lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                    active={editLevel === lvl}
+                    onClick={editing ? () => setEditLevel(lvl) : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                Children Mode
+              </p>
+              <button
+                onClick={editing ? () => setChildrenMode((v) => !v) : undefined}
+                className="flex items-center gap-2 text-sm text-gray-600"
+              >
+                {childrenMode ? (
+                  <ToggleRight className="w-8 h-8 text-primary" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-gray-300" />
+                )}
+                {childrenMode ? "On — kid-friendly recipes" : "Off"}
+              </button>
+            </div>
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-2">
                 Favorite Cuisines
@@ -492,6 +559,25 @@ export default function Profile() {
                     onClick={
                       editing
                         ? () => toggle(dislikes, setDislikes, d)
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                Allergies
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {ALLERGIES.map((a) => (
+                  <Chip
+                    key={a}
+                    label={a}
+                    active={allergies.includes(a)}
+                    onClick={
+                      editing
+                        ? () => toggle(allergies, setAllergies, a)
                         : undefined
                     }
                   />

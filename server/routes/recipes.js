@@ -59,17 +59,50 @@ router.get("/search", async (req, res) => {
   try {
     const { q, diet, cuisine, maxTime } = req.query;
     if (!q || q.trim().length < 2) return res.json([]);
+    const query = q.trim();
+
     if (spoonacular.isEnabled()) {
-      const results = await spoonacular.searchRecipes(q.trim(), {
+      const results = await spoonacular.searchRecipes(query, {
         number: 12,
         diet,
         cuisine,
         maxReadyTime: maxTime ? parseInt(maxTime) : undefined,
       });
-      if (results) return res.json(results);
+      if (results && results.length > 0) return res.json(results);
     }
-    const results = await searchMeals(q.trim());
-    res.json(results);
+
+    // Search external API + local DB in parallel
+    const words = query.split(/\s+/).filter((w) => w.length >= 2);
+    const regexPattern = words
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|");
+    const dbFilter = {
+      $or: [
+        { title: { $regex: regexPattern, $options: "i" } },
+        { "ingredients.name": { $regex: regexPattern, $options: "i" } },
+        { cuisine: { $regex: regexPattern, $options: "i" } },
+        { tags: { $regex: regexPattern, $options: "i" } },
+      ],
+    };
+    const [apiResults, dbResults] = await Promise.all([
+      searchMeals(query),
+      Recipe.find(dbFilter).limit(12),
+    ]);
+
+    // Merge and deduplicate
+    const seen = new Set();
+    const merged = [];
+    for (const r of [...dbResults, ...apiResults]) {
+      const key =
+        r.mealdbId ||
+        r.spoonacularId ||
+        (r._id ? r._id.toString() : r.title?.toLowerCase());
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+
+    res.json(merged.slice(0, 20));
   } catch (err) {
     res.status(500).json({ message: "Search failed", error: err.message });
   }
