@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Package } from "lucide-react";
 import api from "../services/api";
-import BottomNav from "./ui/BottomNav";
 
 export default function Pantry() {
   const qc = useQueryClient();
@@ -47,8 +46,8 @@ export default function Pantry() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-2">
           <Package className="w-6 h-6 text-primary" />
           <h1 className="text-xl font-bold text-gray-900">My Pantry</h1>
@@ -156,7 +155,6 @@ export default function Pantry() {
           </div>
         )}
       </div>
-      <BottomNav />
     </div>
   );
 }

@@ -1,17 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ChefHat,
-  Package,
-  Calendar,
-  ShoppingCart,
-  User,
-  BarChart3,
-  BookOpen,
-  Users,
-  Music,
-} from "lucide-react";
+import { ChefHat, Package, Calendar, ShoppingCart, User } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: ChefHat, label: "Home" },
@@ -21,13 +11,17 @@ const NAV_ITEMS = [
   { to: "/profile", icon: User, label: "Profile" },
 ];
 
-export default function BottomNav() {
+const HIDDEN_ON = ["/login", "/onboarding"];
+
+export default function TopNav() {
   const location = useLocation();
   const path = location.pathname;
 
+  if (HIDDEN_ON.includes(path)) return null;
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="glass border-t border-white/30">
+    <nav className="fixed top-0 left-0 right-0 z-50">
+      <div className="glass border-b border-white/30 shadow-sm">
         <div className="max-w-2xl mx-auto flex justify-around items-center py-1.5 px-2">
           {NAV_ITEMS.map((item) => {
             const isActive =

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, ShoppingCart, Trash2 } from "lucide-react";
 import api from "../services/api";
-import BottomNav from "./ui/BottomNav";
 
 export default function ShoppingList() {
   const qc = useQueryClient();
@@ -24,7 +23,10 @@ export default function ShoppingList() {
 
   const checkMutation = useMutation({
     mutationFn: (itemId) => api.put(`/shopping/${itemId}/check`),
-    onSuccess: () => qc.invalidateQueries(["shopping"]),
+    onSuccess: () => {
+      qc.invalidateQueries(["shopping"]);
+      qc.invalidateQueries(["pantry"]);
+    },
   });
 
   const clearCheckedMutation = useMutation({
@@ -58,8 +60,8 @@ export default function ShoppingList() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <ShoppingCart className="w-6 h-6 text-primary" /> Shopping List
@@ -185,7 +187,6 @@ export default function ShoppingList() {
           </div>
         )}
       </div>
-      <BottomNav />
     </div>
   );
 }

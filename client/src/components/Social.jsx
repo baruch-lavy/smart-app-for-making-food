@@ -21,48 +21,6 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 
-function BottomNav() {
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 glass border-t border-white/20 flex justify-around py-2 z-50">
-      <Link
-        to="/dashboard"
-        className="flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors"
-      >
-        <ChefHat className="w-5 h-5" />
-        <span className="text-xs">Home</span>
-      </Link>
-      <Link
-        to="/pantry"
-        className="flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors"
-      >
-        <Package className="w-5 h-5" />
-        <span className="text-xs">Pantry</span>
-      </Link>
-      <Link
-        to="/planner"
-        className="flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors"
-      >
-        <Calendar className="w-5 h-5" />
-        <span className="text-xs">Planner</span>
-      </Link>
-      <Link
-        to="/shopping"
-        className="flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors"
-      >
-        <ShoppingCart className="w-5 h-5" />
-        <span className="text-xs">Shopping</span>
-      </Link>
-      <Link
-        to="/social"
-        className="flex flex-col items-center gap-1 text-primary"
-      >
-        <Users className="w-5 h-5" />
-        <span className="text-xs">Social</span>
-      </Link>
-    </nav>
-  );
-}
-
 const container = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.06 } },
@@ -135,8 +93,8 @@ export default function Social() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate("/dashboard")}
@@ -419,7 +377,6 @@ export default function Social() {
           )}
         </AnimatePresence>
       </div>
-      <BottomNav />
     </div>
   );
 }

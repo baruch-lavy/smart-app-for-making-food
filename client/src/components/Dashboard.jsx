@@ -18,7 +18,6 @@ import {
 import api from "../services/api";
 import useAuthStore from "../store/useAuthStore";
 import useAppStore from "../store/useAppStore";
-import BottomNav from "./ui/BottomNav";
 
 const INTENTS = [
   {
@@ -107,9 +106,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
       {/* Glass header */}
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-glow-primary">
@@ -374,7 +373,6 @@ export default function Dashboard() {
           </motion.div>
         )}
       </motion.main>
-      <BottomNav />
     </div>
   );
 }

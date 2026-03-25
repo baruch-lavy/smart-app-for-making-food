@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, X, Search, ChefHat, Calendar } from "lucide-react";
 import api from "../services/api";
 import { useToast } from "./ui/Toast";
-import BottomNav from "./ui/BottomNav";
 
 const DAY_KEYS = [
   "monday",
@@ -114,8 +113,8 @@ export default function MealPlanner() {
   const days = mealPlan?.days || {};
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -316,8 +315,6 @@ export default function MealPlanner() {
           </div>
         </div>
       )}
-
-      <BottomNav />
     </div>
   );
 }

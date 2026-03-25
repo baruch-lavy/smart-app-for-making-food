@@ -10,6 +10,7 @@ const {
   generateWeeklyMealPrepList,
   suggestSmartBundling,
 } = require("../services/shoppingService");
+const { getGeneratedRecipe } = require("../services/generatedRecipeStore");
 
 function sanitizeItem(item) {
   if (!item || !String(item.name || "").trim()) return null;
@@ -35,7 +36,13 @@ router.get("/", auth, async (req, res) => {
 // Returns which recipe ingredients are missing from pantry vs already available
 router.get("/missing/:recipeId", auth, async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.recipeId);
+    const recipeId = req.params.recipeId;
+    let recipe;
+    if (recipeId.startsWith("generated-")) {
+      recipe = getGeneratedRecipe(recipeId);
+    } else {
+      recipe = await Recipe.findById(recipeId);
+    }
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
 
     const pantryDoc = await Pantry.findOne({ userId: req.user.id });
@@ -62,7 +69,13 @@ router.get("/missing/:recipeId", auth, async (req, res) => {
 // Adds all missing ingredients for a recipe to the user's shopping list
 router.post("/from-recipe/:recipeId", auth, async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.recipeId);
+    const recipeId = req.params.recipeId;
+    let recipe;
+    if (recipeId.startsWith("generated-")) {
+      recipe = getGeneratedRecipe(recipeId);
+    } else {
+      recipe = await Recipe.findById(recipeId);
+    }
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
 
     const pantryDoc = await Pantry.findOne({ userId: req.user.id });
@@ -160,10 +173,54 @@ router.put("/:itemId/check", auth, async (req, res) => {
     item.checked = !item.checked;
     if (item.checked) {
       item.checkedAt = new Date();
+
+      // Auto-add to pantry when checked
+      let pantry = await Pantry.findOne({ userId: req.user.id });
+      if (!pantry) {
+        pantry = new Pantry({
+          userId: req.user.id,
+          items: [],
+          analytics: {
+            totalItemsAdded: 0,
+            totalItemsExpired: 0,
+            totalWasteValue: 0,
+          },
+        });
+      }
+      // Fix any existing items with missing quantity (legacy data)
+      pantry.items.forEach((p) => {
+        if (p.quantity == null || isNaN(p.quantity)) p.quantity = 1;
+      });
+      // Avoid duplicates — skip if an item with the same name already exists
+      const alreadyInPantry = pantry.items.some(
+        (p) => p.name.toLowerCase() === item.name.toLowerCase(),
+      );
+      if (!alreadyInPantry) {
+        pantry.items.push({
+          name: item.name,
+          quantity: parseFloat(item.quantity) || 1,
+          unit: item.unit || "",
+          addedBy: req.user.id,
+          addedAt: new Date(),
+          category: item.category || "other",
+          usageTracking: { totalUsed: 0, timesUsed: 0, averageUsagePerWeek: 0 },
+        });
+        if (!pantry.analytics) {
+          pantry.analytics = {
+            totalItemsAdded: 0,
+            totalItemsExpired: 0,
+            totalWasteValue: 0,
+          };
+        }
+        pantry.analytics.totalItemsAdded =
+          (pantry.analytics.totalItemsAdded || 0) + 1;
+        await pantry.save();
+      }
     }
     await list.save();
     res.json(list);
   } catch (err) {
+    console.error("CHECK ENDPOINT ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });

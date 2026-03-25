@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 import useAuthStore from "../store/useAuthStore";
-import BottomNav from "./ui/BottomNav";
 
 const CUISINES = [
   "Italian",
@@ -144,8 +143,8 @@ export default function Profile() {
   )[0]?.[0];
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-24">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <User className="w-6 h-6 text-primary" /> Profile
@@ -502,7 +501,6 @@ export default function Profile() {
           </div>
         </div>
       </div>
-      <BottomNav />
     </div>
   );
 }

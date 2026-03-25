@@ -18,6 +18,7 @@ import LearningCenter from "./components/LearningCenter";
 import Social from "./components/Social";
 import Experience from "./components/Experience";
 import MiniPlayer from "./components/ui/MiniPlayer";
+import TopNav from "./components/ui/BottomNav";
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore((s) => s.token);
@@ -153,6 +154,7 @@ export default function App() {
           }
         />
       </Routes>
+      <TopNav />
       <MiniPlayer />
     </ToastProvider>
   );

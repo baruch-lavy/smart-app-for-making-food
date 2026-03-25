@@ -136,8 +136,8 @@ export default function RecipeDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-mesh pb-8">
-      <header className="glass sticky top-0 z-40 border-b border-white/20">
+    <div className="min-h-screen bg-gradient-mesh pb-8 pt-14">
+      <header className="glass sticky top-14 z-40 border-b border-white/20">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}

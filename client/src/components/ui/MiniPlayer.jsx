@@ -109,7 +109,7 @@ export default function MiniPlayer() {
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 80, opacity: 0 }}
-        className={`fixed bottom-16 left-2 right-2 z-50 rounded-2xl bg-gradient-to-r ${gradient} text-white shadow-lg px-4 py-3`}
+        className={`fixed bottom-4 left-2 right-2 z-50 rounded-2xl bg-gradient-to-r ${gradient} text-white shadow-lg px-4 py-3`}
       >
         <div className="flex items-center gap-3">
           {/* Info — tap to go to Experience */}
