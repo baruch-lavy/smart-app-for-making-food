@@ -8,8 +8,18 @@ const DIFF_COLOR = {
   hard: "text-red-700 bg-red-100",
 };
 
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400&q=80";
+const FOOD_FALLBACKS = [
+  "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400&q=80",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80",
+  "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&q=80",
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&q=80",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80",
+  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=400&q=80",
+];
+function getFallbackImg(title) {
+  const hash = (title || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return FOOD_FALLBACKS[hash % FOOD_FALLBACKS.length];
+}
 
 export default function RecipeCard({
   recipe,
@@ -45,11 +55,17 @@ export default function RecipeCard({
     >
       <div className="relative">
         <img
-          src={recipe.imageUrl || FALLBACK_IMG}
+          src={recipe.imageUrl || getFallbackImg(recipe.title)}
           alt={recipe.title}
           className="w-full h-44 object-cover"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           onError={(e) => {
-            e.target.src = FALLBACK_IMG;
+            if (!e.target.dataset.fallback) {
+              e.target.dataset.fallback = "1";
+              e.target.src = getFallbackImg(recipe.title);
+            }
           }}
         />
         {onFavorite && recipe._id && (

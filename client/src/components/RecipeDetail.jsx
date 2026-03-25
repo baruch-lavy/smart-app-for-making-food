@@ -168,6 +168,15 @@ export default function RecipeDetail() {
             src={recipe.imageUrl}
             alt={recipe.title}
             className="w-full h-56 object-cover"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              if (!e.target.dataset.fallback) {
+                e.target.dataset.fallback = "1";
+                e.target.src =
+                  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80";
+              }
+            }}
           />
         </div>
       ) : (
