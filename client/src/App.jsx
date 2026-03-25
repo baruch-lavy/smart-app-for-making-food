@@ -1,40 +1,157 @@
-import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import useAuthStore from './store/useAuthStore'
-import { ToastProvider } from './components/ui/Toast'
-import Auth from './components/Auth'
-import Onboarding from './components/Onboarding'
-import Dashboard from './components/Dashboard'
-import RecipeSuggestions from './components/RecipeSuggestions'
-import RecipeDetail from './components/RecipeDetail'
-import GuidedCooking from './components/GuidedCooking'
-import Pantry from './components/Pantry'
-import ShoppingList from './components/ShoppingList'
-import Profile from './components/Profile'
-import MealPlanner from './components/MealPlanner'
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import useAuthStore from "./store/useAuthStore";
+import { ToastProvider } from "./components/ui/Toast";
+import Auth from "./components/Auth";
+import Onboarding from "./components/Onboarding";
+import Dashboard from "./components/Dashboard";
+import RecipeSuggestions from "./components/RecipeSuggestions";
+import RecipeDetail from "./components/RecipeDetail";
+import GuidedCooking from "./components/GuidedCooking";
+import Pantry from "./components/Pantry";
+import ShoppingList from "./components/ShoppingList";
+import Profile from "./components/Profile";
+import MealPlanner from "./components/MealPlanner";
+import ModeSelect from "./components/ModeSelect";
+import Analytics from "./components/Analytics";
+import LearningCenter from "./components/LearningCenter";
+import Social from "./components/Social";
+import Experience from "./components/Experience";
 
 function ProtectedRoute({ children }) {
-  const token = useAuthStore(s => s.token)
-  return token ? children : <Navigate to="/login" replace />
+  const token = useAuthStore((s) => s.token);
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
-  const token = useAuthStore(s => s.token)
+  const token = useAuthStore((s) => s.token);
   return (
     <ToastProvider>
       <Routes>
-        <Route path="/" element={token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            token ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
         <Route path="/login" element={<Auth />} />
-        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/suggest" element={<ProtectedRoute><RecipeSuggestions /></ProtectedRoute>} />
-        <Route path="/recipe/:id" element={<ProtectedRoute><RecipeDetail /></ProtectedRoute>} />
-        <Route path="/cook/:id" element={<ProtectedRoute><GuidedCooking /></ProtectedRoute>} />
-        <Route path="/pantry" element={<ProtectedRoute><Pantry /></ProtectedRoute>} />
-        <Route path="/shopping" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/planner" element={<ProtectedRoute><MealPlanner /></ProtectedRoute>} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/suggest"
+          element={
+            <ProtectedRoute>
+              <RecipeSuggestions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recipe/:id"
+          element={
+            <ProtectedRoute>
+              <RecipeDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cook/:id"
+          element={
+            <ProtectedRoute>
+              <GuidedCooking />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pantry"
+          element={
+            <ProtectedRoute>
+              <Pantry />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shopping"
+          element={
+            <ProtectedRoute>
+              <ShoppingList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/planner"
+          element={
+            <ProtectedRoute>
+              <MealPlanner />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mode"
+          element={
+            <ProtectedRoute>
+              <ModeSelect />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/learning"
+          element={
+            <ProtectedRoute>
+              <LearningCenter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/social"
+          element={
+            <ProtectedRoute>
+              <Social />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/experience"
+          element={
+            <ProtectedRoute>
+              <Experience />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </ToastProvider>
-  )
+  );
 }

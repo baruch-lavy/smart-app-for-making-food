@@ -1,48 +1,55 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const auth = require('../middleware/auth');
-const Analytics = require('../models/Analytics');
-const { predictRecipeSuccess, generateWeeklyInsight, updateAnalytics } = require('../services/analyticsService');
+const auth = require("../middleware/auth");
+const Analytics = require("../models/Analytics");
+const {
+  predictRecipeSuccess,
+  generateWeeklyInsight,
+  updateAnalytics,
+} = require("../services/analyticsService");
 
-router.get('/overview', auth, async (req, res) => {
+router.get("/overview", auth, async (req, res) => {
   try {
-    let analytics = await Analytics.findOne({ userId: req.userId });
-    
+    let analytics = await Analytics.findOne({ userId: req.user.id });
+
     if (!analytics) {
-      analytics = await updateAnalytics(req.userId);
+      analytics = await updateAnalytics(req.user.id);
     }
-    
+
     res.json(analytics);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/predict-success/:recipeId', auth, async (req, res) => {
+router.get("/predict-success/:recipeId", auth, async (req, res) => {
   try {
-    const prediction = await predictRecipeSuccess(req.userId, req.params.recipeId);
+    const prediction = await predictRecipeSuccess(
+      req.user.id,
+      req.params.recipeId,
+    );
     res.json(prediction);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/weekly-insight', auth, async (req, res) => {
+router.get("/weekly-insight", auth, async (req, res) => {
   try {
-    const weekStartDate = req.query.weekStart 
-      ? new Date(req.query.weekStart) 
+    const weekStartDate = req.query.weekStart
+      ? new Date(req.query.weekStart)
       : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    
-    const insight = await generateWeeklyInsight(req.userId, weekStartDate);
+
+    const insight = await generateWeeklyInsight(req.user.id, weekStartDate);
     res.json(insight);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/update', auth, async (req, res) => {
+router.post("/update", auth, async (req, res) => {
   try {
-    const analytics = await updateAnalytics(req.userId);
+    const analytics = await updateAnalytics(req.user.id);
     res.json(analytics);
   } catch (error) {
     res.status(500).json({ error: error.message });
