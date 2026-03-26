@@ -90,12 +90,17 @@ function transformRecipe(r) {
     ? r.summary.replace(/<[^>]+>/g, "").slice(0, 250) + "..."
     : `A delicious ${cuisine} recipe.`;
 
+  // Proxy Spoonacular images to avoid CORS issues
+  let imageUrl = r.image || "";
+  if (imageUrl.startsWith("https://img.spoonacular.com/")) {
+    imageUrl = `${process.env.SERVER_URL || "http://localhost:5000"}/api/image-proxy/spoonacular-image?url=${encodeURIComponent(imageUrl)}`;
+  }
   return {
     spoonacularId: String(r.id),
     title: r.title,
     description,
     cuisine,
-    imageUrl: r.image || "",
+    imageUrl,
     sourceUrl: r.sourceUrl || "",
     sourceName: r.sourceName || "",
     difficulty,

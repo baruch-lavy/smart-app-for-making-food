@@ -36,6 +36,9 @@ app.use("/api/learning", require("./routes/learning"));
 app.use("/api/experience", require("./routes/experience"));
 app.use("/api/social", require("./routes/social"));
 
+// Proxy route for Spoonacular images
+app.use("/api/image-proxy", require("./routes/imageProxy"));
+
 const PORT = process.env.PORT || 5000;
 
 mongoose

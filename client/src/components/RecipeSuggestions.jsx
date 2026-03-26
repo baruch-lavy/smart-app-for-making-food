@@ -65,7 +65,8 @@ export default function RecipeSuggestions() {
     mutationFn: (data) =>
       api.post("/recipes/suggest", data).then((r) => r.data),
     onSuccess: (data) => {
-      setSuggestions(Array.isArray(data) ? data : data.mains || []);
+      console.log('data', data)
+      setSuggestions(Array.isArray(data.sources) ? data.sources : data.mains || []);
       setActiveTab("ai");
     },
   });
@@ -135,6 +136,8 @@ export default function RecipeSuggestions() {
     if (searchQuery.trim().length < 2) return;
     searchMutation.mutate(searchQuery.trim());
   };
+
+  console.log(suggestions)
 
   const filteredSuggestions = [...suggestions]
     .filter((r) => !filters.easyOnly || r.difficulty === "easy")
