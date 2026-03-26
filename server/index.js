@@ -8,6 +8,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   process.env.CLIENT_URL, // e.g., https://your-frontend.vercel.app
+  "https://music.youtube.com",
 ].filter(Boolean);
 app.use(
   cors({
